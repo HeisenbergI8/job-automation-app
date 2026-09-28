@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Automation
 
-## Getting Started
+A personal job-application tracker for one owner. Every application is recorded with its status
+timeline, the documents sent and analytics; CVs and cover letters are tailored per job without ever
+inventing experience. See [`docs/SPEC.md`](docs/SPEC.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-First, run the development server:
+## Local setup
+
+Needs Node 22 and Docker (for the local Supabase stack).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db:start      # starts local Supabase; prints the URL and keys
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create `.env.local` from `.env.example`. Locally, the Supabase values come from `npx supabase status`,
+and `CRON_SECRET` can be any random string. Add the owner login too, so `db:reset` can recreate it:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+OWNER_EMAIL=you@example.com
+OWNER_PASSWORD=a-long-password
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Then:
 
-## Learn More
+```bash
+npm run db:reset      # applies migrations, loads supabase/seed.sql, regenerates types, creates the owner
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Public sign-up is disabled: the owner account is the only way in. `npm run owner:create -- <email> <password>`
+creates it, or resets its password.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Tailoring needs `ANTHROPIC_API_KEY`. Everything else works without it.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Commands
 
-## Deploy on Vercel
+| Command | What it does |
+| --- | --- |
+| `npm run verify` | Lint, typecheck and unit tests |
+| `npm test` | Unit tests (Vitest) |
+| `npm run db:test` | Database tests (pgTAP), against the running local stack |
+| `npm run db:reset` | Rebuild the local database from migrations and the seed |
+| `npm run db:types` | Regenerate `src/lib/supabase/types.ts` after a migration |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploying
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The web app deploys to Vercel. Set the same variables as `.env.local` (except `OWNER_*`), plus
+`CRON_SECRET`, which Vercel Cron sends to `/api/cron/ghosting` once a day (`vercel.json`). On the hosted
+Supabase project, turn off sign-ups (Authentication > Providers > Email) and create the owner with
+`npm run owner:create` pointed at that project.

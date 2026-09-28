@@ -8,7 +8,7 @@ enough to plan, build and verify one at a time. Tick a box only when its **Done 
 Small chunks can be built directly. For bigger ones (marked **[plan]**), have the `architect` agent
 write a plan in `.claude/plans/`, then run it with `/build <label> --plan <path>`.
 
-Last updated 2026-09-28. Nothing is built yet.
+Last updated 2026-09-28. Stages 0–4 are built and verified; stage 5 is next.
 
 ---
 
@@ -17,23 +17,23 @@ Last updated 2026-09-28. Nothing is built yet.
 Everything later depends on these. They aren't in the spec's build order, but stage 1 can't start
 without them.
 
-- [ ] **0.1 Supabase connection.** Install `@supabase/supabase-js` and `@supabase/ssr`, and fill in
+- [x] **0.1 Supabase connection.** Install `@supabase/supabase-js` and `@supabase/ssr`, and fill in
   `.env.local` from `.env.example`. Add one browser client and one server client under `src/lib/supabase/`.
   The service-role key is used on the server only.
   *Done when:* a server component can read from Supabase locally.
-- [ ] **0.2 Migrations workflow.** Supabase CLI, `supabase/migrations/`, and a script that generates the
+- [x] **0.2 Migrations workflow.** Supabase CLI, `supabase/migrations/`, and a script that generates the
   database types into `src/lib/supabase/types.ts`.
   *Done when:* one empty migration applies cleanly and the generated types compile.
-- [ ] **0.3 Owner-only auth.** Log in with Supabase Auth, and protect every route with `proxy.ts`
+- [x] **0.3 Owner-only auth.** Log in with Supabase Auth, and protect every route with `proxy.ts`
   (Next 16's replacement for `middleware.ts`). Row-level security is on for every table from here on.
   *Done when:* logged out, every page redirects to the login page. Logged in, the owner sees the app.
-- [ ] **0.4 App shell.** Replace the starter page with a layout and navigation: Dashboard, Jobs, Analytics,
+- [x] **0.4 App shell.** Replace the starter page with a layout and navigation: Dashboard, Jobs, Analytics,
   Settings. Empty pages are fine for now.
   *Done when:* all four pages load behind login.
 
 ## Stage 1: Job record and dashboard **[plan]**
 
-- [ ] **1.1 Schema.**
+- [x] **1.1 Schema.**
   - A `jobs` table with: site, url, company, role, salary (min, max, currency, and the raw text), date
     found, date applied, status, a saved copy of the job description, apply method (auto or manual),
     and fit score plus reasons (empty until stage 5).
@@ -41,60 +41,61 @@ without them.
   - The status values are fixed, exactly as in the spec.
 
   *Done when:* the migration applies and the generated types include both tables.
-- [ ] **1.2 One way to change status.** A single server action that writes the event row and updates
+- [x] **1.2 One way to change status.** A single server action that writes the event row and updates
   `jobs.status` together, and refuses transitions the spec doesn't allow.
   *Done when:* an invalid transition is rejected and every valid one leaves exactly one event row.
-- [ ] **1.3 Jobs list.** A table with status, company, role, site, date applied and salary. It can be
+- [x] **1.3 Jobs list.** A table with status, company, role, site, date applied and salary. It can be
   filtered by status and site and sorted by date.
   *Done when:* seeded jobs show up and the filters work.
-- [ ] **1.4 Job detail page.** All the fields, the saved job description, the status timeline, and a
+- [x] **1.4 Job detail page.** All the fields, the saved job description, the status timeline, and a
   control for changing status.
   *Done when:* changing a status on the page adds a dated timeline entry.
-- [ ] **1.5 Add a job by pasting a link.** A form that takes the link plus the key fields, with status
+- [x] **1.5 Add a job by pasting a link.** A form that takes the link plus the key fields, with status
   `found`. Filling the fields in automatically from the link is left to the worker (stage 5).
   *Done when:* a pasted job appears in the list and on its own detail page.
-- [ ] **1.6 Documents sent.**
+- [x] **1.6 Documents sent.**
   - An `application_documents` table (CV, cover letter or intro, linked to a job).
   - A Storage bucket for the files.
   - Download links on the detail page.
 
   *Done when:* a file uploaded by hand appears on the job and downloads.
-- [ ] **1.7 Dashboard home.** Counts by status, and the latest status changes.
+- [x] **1.7 Dashboard home.** Counts by status, and the latest status changes.
   *Done when:* the numbers match the jobs list.
 
 ## Stage 2: Analytics **[plan]**
 
-- [ ] **2.1 Applications over time** (per week).
-- [ ] **2.2 Funnel:** applied → screening → interview → offer.
-- [ ] **2.3 Response rate**, broken down by site and by auto-applied vs manual.
-- [ ] **2.4 Salary spread and average days to first reply.** Both are worked out from the status events.
-- [ ] **2.5 Follow-up reminders and auto-ghosting.** After X days with no reply, remind the owner. After
+- [x] **2.1 Applications over time** (per week).
+- [x] **2.2 Funnel:** applied → screening → interview → offer.
+- [x] **2.3 Response rate**, broken down by site and by auto-applied vs manual.
+- [x] **2.4 Salary spread and average days to first reply.** Both are worked out from the status events.
+- [x] **2.5 Follow-up reminders and auto-ghosting.** After X days with no reply, remind the owner. After
   that, mark the job `ghosted` through the 1.2 status action.
-  *Open:* where this runs (the daily worker or a Vercel cron job).
+  *Decided:* a daily Vercel cron job (`/api/cron/ghosting`, `vercel.json`). Reminders show on the
+  dashboard; notifications come with 5.6.
 
 *Stage done when:* every chart's numbers can be checked by hand against a small seeded dataset.
 
 ## Stage 3: Settings
 
-- [ ] **3.1 Job criteria:** target roles, locations, remote preference, salary floor, must-have and
+- [x] **3.1 Job criteria:** target roles, locations, remote preference, salary floor, must-have and
   excluded keywords.
-- [ ] **3.2 Master CV.** Store it in a structured form that the tailoring step can check against.
-  *Open:* whether it's entered as structured sections or uploaded and parsed.
-- [ ] **3.3 Written self-intro** for "Tell us about yourself" questions.
-- [ ] **3.4 Teleprompter page.** The intro scrolls as captions, with adjustable speed.
+- [x] **3.2 Master CV.** Store it in a structured form that the tailoring step can check against.
+  *Decided:* entered as structured sections.
+- [x] **3.3 Written self-intro** for "Tell us about yourself" questions.
+- [x] **3.4 Teleprompter page.** The intro scrolls as captions, with adjustable speed.
 
 ## Stage 4: CV and cover-letter tailoring **[plan]**
 
-- [ ] **4.1 Claude API client.** Install `@anthropic-ai/sdk`. It runs on the server and in the worker
-  only.
-- [ ] **4.2 ATS keyword match score** for the master CV against a job description.
-- [ ] **4.3 CV tailoring.** It only rewords and reorders. Add a check that rejects any output containing
+- [x] **4.1 Claude API client.** Install `@anthropic-ai/sdk`. It runs on the server and in the worker
+  only. *Decided:* Claude Opus 5.5 (`claude-opus-5-5`) for tailoring.
+- [x] **4.2 ATS keyword match score** for the master CV against a job description.
+- [x] **4.3 CV tailoring.** It only rewords and reorders. Add a check that rejects any output containing
   a skill, employer, title or date that isn't in the master CV.
   *Done when:* a test with a deliberately invented skill is rejected.
-- [ ] **4.4 Cover letter**, generated under the same no-invention rule.
-- [ ] **4.5 Rendering and storage.** Produce ATS-friendly PDFs, save them to Storage, link them through
+- [x] **4.4 Cover letter**, generated under the same no-invention rule.
+- [x] **4.5 Rendering and storage.** Produce ATS-friendly PDFs, save them to Storage, link them through
   `application_documents`, and show the keyword score before and after.
-- [ ] **4.6 Intro adaptation with approval.** Adapt the intro to the job's format and put it on hold until
+- [x] **4.6 Intro adaptation with approval.** Adapt the intro to the job's format and put it on hold until
   the owner approves it. The application waits in the meantime.
   *Done when:* an unapproved intro can't be used.
 
@@ -137,8 +138,9 @@ To be settled before the chunk they block:
 
 | Decision | Blocks |
 | --- | --- |
-| Where follow-up and ghosting run: the worker or a Vercel cron job | 2.5 |
-| Master CV format: structured sections or an uploaded file | 3.2 |
-| Which Claude model to use for scoring and for tailoring (cost vs quality) | 4.1 |
+| Which Claude model to use for scoring (tailoring uses Opus 5.5) | 5.5 |
 | Whether each job board's terms allow automated searching | 5.3 |
 | How to notify the owner | 5.6 |
+
+Settled on 2026-09-28: ghosting runs as a Vercel cron job (2.5), the master CV is structured sections
+(3.2), and tailoring uses Claude Opus 5.5 (4.1).

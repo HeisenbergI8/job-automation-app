@@ -14,9 +14,9 @@ records every application, with its status timeline, and shows analytics. The fu
 - **Supabase** (`supabase/`): Postgres, Storage (CVs, cover letters, intro videos) and Auth.
 - **Claude API**: fit scoring, CV and cover-letter tailoring, and self-intro adaptation.
 
-**State as of 2026-09-28:** greenfield. `src/app/` is still the Create Next App starter, `worker/`
-contains only a README, and `supabase/` is empty. The Supabase and Anthropic SDKs are not installed
-yet. Build in the order in `docs/ROADMAP.md`: foundation first, then the job record and dashboard.
+**State as of 2026-09-28:** roadmap stages 0–4 are built (foundation, job record and dashboard,
+analytics, settings, tailoring). `worker/` still contains only a README; stage 5 is next. Build in the
+order in `docs/ROADMAP.md`.
 
 ---
 
@@ -24,13 +24,15 @@ yet. Build in the order in `docs/ROADMAP.md`: foundation first, then the job rec
 
 | Purpose | Command |
 | --- | --- |
-| Full check (the closing gate) | `npm run verify` (lint + typecheck) |
+| Full check (the closing gate) | `npm run verify` (lint + typecheck + unit tests) |
 | Fast check (runs every turn) | `npm run typecheck` |
-| Tests, one file | None yet. There is no test runner. |
-| Run the app locally | `npm run dev` |
+| Tests, one file | `npx vitest run src/lib/analytics.test.ts` |
+| Database tests | `npm run db:test` (pgTAP in `supabase/tests/`; needs the local stack running) |
+| New migration | add `supabase/migrations/<timestamp>_<name>.sql`, then `npm run db:reset` (also regenerates types) |
+| Run the app locally | `npm run db:start`, then `npm run dev` (setup in `README.md`) |
 
-The first two must stay in sync with `harness.config.json`. When a test runner is added, add it to
-`verify` in `package.json` and fill in the "one file" row.
+The first two must stay in sync with `harness.config.json`. `db:test` is not in `verify` because it
+needs Docker; run it after any migration.
 
 ---
 
@@ -46,8 +48,14 @@ The first two must stay in sync with `harness.config.json`. When a test runner i
 
 Path alias: `@/*` → `src/*`.
 
-**Read this first:** `docs/SPEC.md`. There is no representative module yet. Once the first real
-feature (the job record) lands, name it here as the template for the rest.
+**Read this first:** `docs/SPEC.md`, then the job record as the template for the rest:
+- `supabase/migrations/20260928000100_job_record.sql`: tables, row-level security, and rules the database
+  enforces itself (the status transitions, via `set_job_status()`).
+- `src/app/(app)/jobs/`: server components that read through `requireOwner()`, server actions in
+  `actions.ts` returning `{ error }`, and small client forms using `useActionState`.
+- `src/lib/`: pure, unit-tested logic (`analytics.ts`, `tailoring/check.ts`) that the worker can reuse.
+  Files that import `server-only` (`claude.ts`, `tailoring/generate.ts`, `supabase/server.ts`) can't be
+  imported by the worker or by tests.
 
 ---
 
@@ -56,6 +64,13 @@ feature (the job record) lands, name it here as the template for the rest.
 - **Next.js 16 differs from older versions.** Read the relevant guide in `node_modules/next/dist/docs/`
   before writing Next code (see `AGENTS.md`). For example, `middleware.ts` is deprecated and is now
   `proxy.ts`, with the exported function named `proxy`.
+- **Change a job's status only through `set_job_status()`** (the `changeStatus` server action, or
+  `rpc("set_job_status")` from the worker). A trigger refuses direct updates of `jobs.status`, and new
+  jobs must start as `found`.
+- **`supabase db reset` deletes the owner account.** Use `npm run db:reset`, which recreates it from
+  `OWNER_EMAIL` and `OWNER_PASSWORD` in `.env.local`.
+- **React 19 resets a form after its action runs.** Forms that must keep their values after an error
+  submit through `startTransition` in `onSubmit` (see `login-form.tsx`).
 - **Tailwind v4 is configured in CSS** (`@import "tailwindcss"` in `src/app/globals.css`). There is no
   `tailwind.config.js`, so don't create one.
 - **The worker never runs inside Next.js.** A browser run takes minutes and would time out in a web
