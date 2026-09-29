@@ -103,6 +103,7 @@ export function toPostings(jobs: Extracted[], links: string[], site: Posting["si
         // The owner's alerts are set up for remote jobs; Claude still checks each one.
         remote: !NOT_REMOTE.test(where),
         posted_at: sentAt.toISOString(),
+        fromAlert: true,
       },
     ];
   });

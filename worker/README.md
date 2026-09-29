@@ -143,9 +143,9 @@ JobStreet (JSearch) are searched on the first run of the day only, which keeps y
 searches a month; the other runs check company career pages. To pick other hours, e.g. twice a day:
 `HOURS="8 20" npm run schedule`. Your Mac doesn't have to be awake at those times:
 
-- **Asleep at 8:00** (lid closed, for example): the finder runs as soon as the Mac wakes. If it slept
-  through several 8:00s, you get one run on wake, not one per missed day.
-- **Shut down at 8:00**: don't count on a catch-up run. Apple only promises the catch-up after sleep.
+- **Asleep at a run time** (lid closed, for example): the finder runs as soon as the Mac wakes. If it
+  slept through several run times, you get one run on wake, not one per missed time.
+- **Shut down at a run time**: don't count on a catch-up run. Apple only promises the catch-up after sleep.
   Run `npm start` by hand if you want that day's jobs.
 
 To test the schedule straight away:

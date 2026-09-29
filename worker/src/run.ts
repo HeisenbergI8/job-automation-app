@@ -18,6 +18,9 @@ const dryRun = process.argv.includes("--dry-run");
 const db = createServiceClient();
 const send = dryRun ? async (text: string) => (console.log(`[dry run; not sent]\n${text}\n`), false) : sendTelegram;
 // Supabase reports errors as plain `{ message, … }` objects, not `Error`s.
+// Counted as searches happen, so even a run that fails later records them (option A's daily check).
+let jsearchSearches = 0;
+
 const message = (error: unknown) =>
   error instanceof Error
     ? error.message
@@ -76,7 +79,6 @@ async function findJobs(errors: string[]) {
   // first run of the day only (owner's option A), so three daily runs fit the free 200 a month. Dry
   // runs skip it too.
   const fromCareerPages = postings.length;
-  let jsearchSearches = 0;
   if (process.env.JSEARCH_API_KEY?.trim() && dryRun) console.log("Dry run: JSearch skipped to save your monthly searches.");
   else if (process.env.JSEARCH_API_KEY?.trim() && (await jsearchRanToday())) console.log("JSearch already ran today; career pages only.");
   else if (process.env.JSEARCH_API_KEY?.trim()) {
@@ -117,11 +119,16 @@ async function findJobs(errors: string[]) {
   console.log(`${recent.length} of them were posted in the last ${NEW_WITHIN_DAYS} days.`);
   const fresh = dedupe(recent, [...saved.data, ...seen.data]);
   const scorer = process.env.SCORER === "keywords" ? null : claudeCodeScorer(settings.data, parseMasterCv(settings.data.master_cv));
-  const { ranked, errors: scoringErrors } = await rank(fresh, settings.data, scorer);
+  const { ranked, errors: scoringErrors, unreviewedAlerts } = await rank(fresh, settings.data, scorer);
   const bySite = ranked.reduce<Record<string, number>>((count, job) => ((count[job.site] = (count[job.site] ?? 0) + 1), count), {});
   console.log(`Reviewed ${ranked.length}: ${Object.entries(bySite).map(([site, n]) => `${n} ${site}`).join(", ")}.`);
   errors.push(...scoringErrors);
-  return { fetched: postings.length, fresh: fresh.length, ranked, jsearchSearches, alertEmails };
+  // An alert email counts as read only once every job in it has been reviewed (or skipped as seen,
+  // saved, old or a dealbreaker); otherwise the next run reads it again.
+  const waiting = new Set(unreviewedAlerts.map((job) => job.url));
+  const readEmails = alertEmails.filter((email) => !email.postings.some((posting) => waiting.has(posting.url)));
+  if (waiting.size) console.log(`${waiting.size} alert jobs will be reviewed on the next run.`);
+  return { fetched: postings.length, fresh: fresh.length, ranked, readEmails };
 }
 
 /** Whether a real run already used JSearch today (the Mac's local day). */
@@ -183,8 +190,8 @@ async function main() {
   const errors: string[] = [];
 
   try {
-    const { fetched, fresh, ranked, jsearchSearches, alertEmails } = await findJobs(errors);
-    // 0–3 jobs: only those scoring MIN_FIT or more. A note (e.g. a link that won't open) goes first,
+    const { fetched, fresh, ranked, readEmails } = await findJobs(errors);
+    // Up to 3 jobs scoring MIN_FIT or more, or the single closest checked match (pickTop). A note goes first,
     // so it is the first thing the owner reads, in the app and on Telegram.
     const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
     if (!dryRun && top.length) {
@@ -194,9 +201,9 @@ async function main() {
       if (insertError) throw insertError;
     }
     if (!dryRun) await rememberRejected(ranked);
-    if (!dryRun && alertEmails.length) {
+    if (!dryRun && readEmails.length) {
       const { error: emailsError } = await db.from("processed_emails").upsert(
-        alertEmails.map((email) => ({ message_id: email.messageId, site: email.site, jobs_found: email.postings.length })),
+        readEmails.map((email) => ({ message_id: email.messageId, site: email.site, jobs_found: email.postings.length })),
         { onConflict: "message_id", ignoreDuplicates: true },
       );
       if (emailsError) throw emailsError;
@@ -226,7 +233,10 @@ async function main() {
     console.log(`Done: ${fetched} read, ${fresh} new, ${dryRun ? 0 : top.length} saved, ${errors.length} problems.`);
   } catch (failure) {
     errors.push(message(failure));
-    await db.from("worker_runs").update({ finished_at: new Date().toISOString(), ok: false, errors }).eq("id", run.id);
+    await db
+      .from("worker_runs")
+      .update({ finished_at: new Date().toISOString(), ok: false, errors, jsearch_searches: jsearchSearches })
+      .eq("id", run.id);
     await send(`<b>The daily job finder failed.</b>\n${message(failure).replace(/[<>&]/g, "")}`).catch(() => {});
     throw failure;
   }

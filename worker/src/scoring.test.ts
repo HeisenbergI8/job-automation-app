@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import claudeOutput from "../fixtures/claude-output.json";
-import { keywordFit, MIN_FIT, parseClaudeOutput, pickTop, rank, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
+import { keywordFit, MAX_ALERT_REVIEWS, MIN_FIT, parseClaudeOutput, pickTop, rank, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
 import type { Posting } from "./sources";
 
 const criteria: Criteria = {
@@ -175,6 +175,35 @@ describe("eligibility", () => {
   it("reads eligibility from Claude's answer", () => {
     const answer = JSON.stringify({ ...claudeOutput, structured_output: { score: 12, reasons: ["US residents only."], eligible: false } });
     expect(parseClaudeOutput(answer)).toEqual({ score: 12, reasons: ["US residents only."], eligible: false });
+  });
+});
+
+describe("jobs from the owner's alert emails", () => {
+  const careers = Array.from({ length: 30 }, (_, i) => posting({ url: `careers-${i}`, site: "greenhouse" }));
+  const alert = (i: number) => posting({ url: `alert-${i}`, site: "linkedin", fromAlert: true, description: "Short alert." });
+
+  it("are all reviewed, on top of the usual shortlist", async () => {
+    const alerts = Array.from({ length: 10 }, (_, i) => alert(i));
+    const scorer = vi.fn(async () => ({ score: 60, reasons: ["ok"] }));
+    const { ranked, unreviewedAlerts } = await rank([...careers, ...alerts], criteria, scorer, 12);
+    expect(ranked.filter((job) => job.fromAlert)).toHaveLength(10);
+    expect(ranked).toHaveLength(22);
+    expect(unreviewedAlerts).toEqual([]);
+  });
+
+  it("past the cap wait for the next run", async () => {
+    const alerts = Array.from({ length: MAX_ALERT_REVIEWS + 3 }, (_, i) => alert(i));
+    const { unreviewedAlerts } = await rank(alerts, criteria, null, 12);
+    expect(unreviewedAlerts).toHaveLength(3);
+  });
+});
+
+describe("closest match", () => {
+  it("is only sent when Claude checked it", () => {
+    const keywordOnly = { ...posting({ url: "kw" }), score: 40, reasons: [], scoredBy: "keywords" } as Ranked;
+    const checked = { ...posting({ url: "cc" }), score: 30, reasons: [], scoredBy: "claude-code", eligible: true } as Ranked;
+    expect(pickTop([keywordOnly])).toEqual([]);
+    expect(pickTop([keywordOnly, checked]).map((job) => job.url)).toEqual(["cc"]);
   });
 });
 

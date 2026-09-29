@@ -50,7 +50,8 @@ export function pickTop(ranked: Ranked[]): Ranked[] {
   const open = ranked.filter((job) => job.eligible !== false);
   const good = open.filter((job) => job.score >= MIN_FIT);
   if (!good.length) {
-    const best = open[0];
+    // Only a job Claude checked for eligibility can be sent as the closest match.
+    const best = open.find((job) => job.scoredBy === "claude-code");
     if (!best) return [];
     return [{ ...best, reasons: [`Closest match today: it scored ${best.score}, below your usual ${MIN_FIT}.`, ...best.reasons] }];
   }
@@ -144,15 +145,26 @@ export function keywordFit(posting: Posting, criteria: Criteria): Fit {
  * returns them best first. After two failures in a row the scorer isn't asked again this run; those
  * jobs keep their keyword score and say so.
  */
+/** At most this many jobs from the owner's alert emails are reviewed per run; the rest wait (see run.ts). */
+export const MAX_ALERT_REVIEWS = 20;
+
 export async function rank(postings: Posting[], criteria: Criteria, scorer: Scorer | null, shortlist = 12) {
   const sorted = postings
     .map((posting) => ({ ...posting, ...keywordFit(posting, criteria) }))
     .filter((job) => job.score > 0)
     .sort((a, b) => b.score - a.score);
-  // The best few from each priority site always get a Claude review, so the many company-page jobs
-  // can't crowd LinkedIn, JobStreet and Indeed out; the rest of the shortlist is the best of the others.
-  const candidates = new Set(PRIORITY_SITES.flatMap((site) => sorted.filter((job) => job.site === site).slice(0, 3)));
-  for (const job of sorted) if (candidates.size < shortlist) candidates.add(job);
+  // Every job from the owner's own alert emails gets a Claude review (up to MAX_ALERT_REVIEWS): the
+  // owner chose those searches, and an alert carries too little text for keywords to judge it. Then
+  // the best few from each priority site, so company-page jobs can't crowd LinkedIn, JobStreet and
+  // Indeed out, and the rest of the shortlist is the best of the others.
+  const alerts = sorted.filter((job) => job.fromAlert);
+  const others = sorted.filter((job) => !job.fromAlert);
+  const candidates = new Set(alerts.slice(0, MAX_ALERT_REVIEWS));
+  const limit = candidates.size + shortlist;
+  for (const site of PRIORITY_SITES) others.filter((job) => job.site === site).slice(0, 3).forEach((job) => candidates.add(job));
+  for (const job of others) if (candidates.size < limit) candidates.add(job);
+  // Alert jobs past the cap weren't reviewed: their email is kept for the next run (run.ts).
+  const unreviewedAlerts = alerts.filter((job) => !candidates.has(job));
 
   const ranked: Ranked[] = [];
   const errors: string[] = [];
@@ -170,7 +182,7 @@ export async function rank(postings: Posting[], criteria: Criteria, scorer: Scor
     }
     ranked.push({ ...job, reasons: [...job.reasons, "Keyword score only."], scoredBy: "keywords" });
   }
-  return { ranked: ranked.sort((a, b) => b.score - a.score), errors };
+  return { ranked: ranked.sort((a, b) => b.score - a.score), errors, unreviewedAlerts };
 }
 
 const fitSchema = z.object({

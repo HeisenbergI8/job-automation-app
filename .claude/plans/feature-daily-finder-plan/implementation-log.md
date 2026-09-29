@@ -164,7 +164,7 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **Hybrid (OpenAI, Paris):** Ashby sets `isRemote: true` on hybrid jobs; live, 527 of OpenAI's jobs are `isRemote=true, workplaceType=Hybrid`. Remote now follows `workplaceType` for Ashby and Lever. For Greenhouse locations and JSearch title/location, `NOT_REMOTE` (hybrid, on-site, in-office) overrides the remote flag and JSearch's remote-search trust.
 - **Checked with real Claude calls (2):** both jobs were re-scored `eligible=false` (15 and 5), with the right reasons.
 - **Gate:** `npm run verify` 87/87 (6 new tests).
-- **Owner decision pending:** whether to remove the two wrongly sent jobs from the list.
+- **Removed at the owner's request:** both jobs were deleted from the hosted `jobs` table and added to `seen_postings` (score 0), so they aren't found again. (This line said "pending" until the audit of 2026-09-29 caught it.)
 
 ## Owner feedback: results aren't the jobs they see; read job-alert emails — 2026-09-29
 
@@ -174,3 +174,14 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - `askClaudeCode` and `structuredOutput` were split out of `scoring.ts` for reuse. Dependencies added to the worker: imapflow and mailparser.
 - **Gate:** `npm run verify` 90/90, `db:test` 29/29.
 - **Not verified yet:** everything live. The owner still has to create alerts and a Gmail app password. The first real alert emails will show whether extraction and link handling fit each site's format.
+
+## Review follow-up (auditor 64/100, tester PASS for the email reader) — 2026-09-29
+
+- **Alert jobs lost past the shortlist (medium):** `rank` now reviews every alert job (`fromAlert`, up to `MAX_ALERT_REVIEWS` = 20) on top of the usual 12. Alert jobs past the cap are returned as `unreviewedAlerts`, and their email isn't marked read, so the next run picks them up.
+- **Closest match without an eligibility check:** only a Claude-scored job can be the closest match, so keyword-only fallbacks are never sent.
+- **Lever `workplaceType: "unspecified"`:** the location decides in that case.
+- **A failed run didn't record JSearch searches:** the count is now module-level and written in the failure path too.
+- **Docs drift:** the ROADMAP (5.1, 5.5, the "Settled" paragraph), the README's schedule wording and the `run.ts` comment now describe the current rules. The "pending" removal line above is corrected.
+- **The fixture edits (auditor's "hand-edited" note):** the JSearch `job_posted_at_datetime_utc` values were copied by apply link from the recorded raw answer, and JSearch really returns midnight timestamps. `parameters.num_pages` is JSearch's own echo of its default. The Lever `createdAt` and Ashby `publishedAt` values are the live values seen on 2026-09-29, added to the older fixtures.
+- **Still open:** the Gmail search matches any email from those domains, not only alerts. I'll narrow it to the exact alert senders once the owner's first real alert emails show them.
+- **Gate:** `npm run verify` 93/93.

@@ -78,8 +78,11 @@ describe("hybrid isn't remote", () => {
   it("reads hybrid in a Greenhouse location or a Lever workplace type", () => {
     const gh = { jobs: [{ absolute_url: "u", title: "t", location: { name: "Remote / Hybrid - London" } }] };
     expect(parseGreenhouse(gh, { ats: "greenhouse", slug: "x", company: null })[0].remote).toBe(false);
-    const lever = [{ text: "t", hostedUrl: "u", categories: { location: "Remote" }, workplaceType: "hybrid" }];
-    expect(parseLever(lever, { ats: "lever", slug: "x", company: null })[0].remote).toBe(false);
+    const lever = [
+      { text: "t", hostedUrl: "u", categories: { location: "Remote" }, workplaceType: "hybrid" },
+      { text: "t", hostedUrl: "u2", categories: { location: "Remote" }, workplaceType: "unspecified" },
+    ];
+    expect(parseLever(lever, { ats: "lever", slug: "x", company: null }).map((job) => job.remote)).toEqual([false, true]);
   });
 });
 

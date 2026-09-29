@@ -106,7 +106,7 @@ without them.
   - Its own `package.json` and `tsconfig.json` (and exclude `worker/` from the root tsconfig).
   - A Supabase service client.
   - A run log (`worker_runs` table, plus `worker/logs/finder.log`).
-  - A once-a-day schedule on the Mac (launchd, 8:00 local time; runs on wake if the Mac was asleep).
+  - A schedule on the Mac (launchd, 8:00, 13:00 and 18:00 local time; runs on wake if the Mac was asleep).
 - [ ] **5.2 Career-page sources:** Greenhouse, Lever and Ashby public job boards, for the companies
   listed in Settings (`career_boards`). A board that can't be read is shown in red in Settings.
 - [ ] **5.3 Job-board sources, read-only:** LinkedIn, Indeed, JobStreet.
@@ -116,7 +116,9 @@ without them.
   never applied to. Ticked after the owner's first run with a JSearch key.
 - [ ] **5.4 Duplicate removal** across sites (same company, role and location).
 - [ ] **5.5 Scoring.** Score each job against the criteria and master CV, keep the reasons, and save the
-  top 3 each day as `found`, but only jobs scoring 50 or more (`MIN_FIT`), so some days save 0–2.
+  top 3 as `found`: jobs scoring 50 or more (`MIN_FIT`), LinkedIn, JobStreet and Indeed first, then
+  other sites, only jobs posted in the last 7 days that the owner can apply for from where they live.
+  If none reach 50, the single closest match Claude checked is sent, labelled (owner, 2026-09-29).
   *Decided:* Claude Code headless (`claude -p`, Sonnet) with the owner's subscription, no paid API.
   Keyword-only scoring when Claude Code is unavailable.
 - [ ] **5.6 Notify the owner** about each new batch and each job marked `needs_manual`.
@@ -154,7 +156,9 @@ Settled on 2026-09-28: ghosting runs as a Vercel cron job (2.5), the master CV i
 (3.2), and tailoring uses Claude Opus 5.5 (4.1).
 
 Settled on 2026-09-29: scoring runs on Claude Code headless with the owner's subscription (Sonnet),
-with a keyword fallback, and only jobs scoring 50 or more are saved, so 0–3 a day (5.5). The first
+with a keyword fallback; up to 3 jobs a day scoring 50 or more, or the closest checked match (5.5). The first
 sources are Greenhouse, Lever and Ashby only, with LinkedIn, Indeed and JobStreet deferred (5.2, 5.3).
-Notifications go to Telegram (5.6). The worker runs daily at 8:00 via launchd (5.1). Tailoring moves
+Notifications go to Telegram (5.6). The worker runs at 8:00, 13:00 and 18:00 via launchd, with JSearch on
+the first run of the day only (5.1). The owner's own LinkedIn, JobStreet and Indeed job-alert emails
+are read from Gmail (read-only) as a source (5.3). Tailoring moves
 off the paid API to Claude Code as part of stage 6.

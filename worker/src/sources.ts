@@ -12,6 +12,8 @@ export type Posting = Required<Pick<TablesInsert<"jobs">, JobFields>> & {
   note?: string;
   /** When the job was first posted (ISO), if the board says; used to keep only new jobs. */
   posted_at?: string | null;
+  /** Came from the owner's own job-alert email: always gets a Claude review (see rank). */
+  fromAlert?: boolean;
 };
 export type Board = Pick<Tables<"career_boards">, "ats" | "slug" | "company">;
 
@@ -95,7 +97,11 @@ export function parseLever(body: LeverPosting[], board: Board): Posting[] {
       salary_max: job.salaryRange?.max ?? null,
       salary_currency: job.salaryRange?.currency ?? null,
       salary_raw: null,
-      remote: job.workplaceType ? job.workplaceType === "remote" : /remote/i.test(location ?? "") && !NOT_REMOTE.test(location ?? ""),
+      // Lever's "unspecified" says nothing, so the location decides then.
+      remote:
+        job.workplaceType && job.workplaceType !== "unspecified"
+          ? job.workplaceType === "remote"
+          : /remote/i.test(location ?? "") && !NOT_REMOTE.test(location ?? ""),
       posted_at: job.createdAt ? new Date(job.createdAt).toISOString() : null,
     };
   });
