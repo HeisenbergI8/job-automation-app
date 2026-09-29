@@ -3,7 +3,7 @@
 // itself: it only reads JSearch's results and passes on the links. JSearch's free plan is 200
 // requests a month, so a run makes at most MAX_QUERIES and rotates through the combinations daily.
 import type { Criteria } from "./scoring";
-import type { Posting } from "./sources";
+import { decodeEntities, type Posting } from "./sources";
 
 export const MAX_QUERIES = 6;
 
@@ -27,15 +27,15 @@ export function todaysSearches(criteria: Pick<Criteria, "target_roles" | "locati
 }
 
 type JSearchJob = {
-  job_title?: string;
-  employer_name?: string;
-  job_publisher?: string;
-  job_apply_link?: string;
-  job_description?: string;
-  job_is_remote?: boolean;
-  job_location?: string;
-  job_city?: string;
-  job_country?: string;
+  job_title?: string | null;
+  employer_name?: string | null;
+  job_publisher?: string | null;
+  job_apply_link?: string | null;
+  job_description?: string | null;
+  job_is_remote?: boolean | null;
+  job_location?: string | null;
+  job_city?: string | null;
+  job_country?: string | null;
   job_min_salary?: number | null;
   job_max_salary?: number | null;
   job_salary_currency?: string | null;
@@ -56,24 +56,33 @@ function yearly(amount: number | null | undefined, period: string | null | undef
   return null;
 }
 
-export function parseJSearch(body: { data?: JSearchJob[] }): Posting[] {
-  return (body.data ?? [])
+// The live /search-v2 answer (recorded 2026-09-29, worker/fixtures/jsearch.json) nests jobs in
+// `data.jobs`, not `data` as the docs said.
+type JSearchAnswer = { data?: { jobs?: JSearchJob[] } };
+
+/**
+ * `remoteSearch`: the search asked JSearch for work-from-home jobs only. JSearch marked every result
+ * `job_is_remote: false` in the recorded answer anyway, so its filter is trusted instead; Claude still
+ * reads the description and catches any that aren't really remote.
+ */
+export function parseJSearch(body: JSearchAnswer, remoteSearch = false): Posting[] {
+  return (body.data?.jobs ?? [])
     .filter((job) => job.job_apply_link && job.job_title && job.employer_name)
     .map((job) => {
       const min = yearly(job.job_min_salary, job.job_salary_period);
       const max = yearly(job.job_max_salary, job.job_salary_period);
       return {
-        site: siteName(job.job_publisher ?? "jsearch"),
+        site: siteName(job.job_publisher || "jsearch"),
         url: job.job_apply_link!,
-        company: job.employer_name!.trim(),
-        role: job.job_title!.trim(),
+        company: decodeEntities(job.employer_name!).trim(),
+        role: decodeEntities(job.job_title!).trim(),
         location: job.job_location?.trim() || [job.job_city, job.job_country].filter(Boolean).join(", ") || null,
         description: job.job_description?.trim() ?? "",
         salary_min: min,
         salary_max: max,
         salary_currency: min != null || max != null ? (job.job_salary_currency ?? null) : null,
         salary_raw: null,
-        remote: job.job_is_remote === true,
+        remote: remoteSearch || job.job_is_remote === true,
       };
     });
 }
@@ -82,18 +91,17 @@ export function parseJSearch(body: { data?: JSearchJob[] }): Posting[] {
 export async function searchJSearch(search: Search, remoteOnly: boolean): Promise<Posting[]> {
   const params = new URLSearchParams({
     query: search.role,
-    page: "1",
-    num_pages: "1",
     country: search.country,
     date_posted: "3days",
     ...(remoteOnly && { work_from_home: "true" }),
   });
-  const response = await fetch(`https://jsearch.p.rapidapi.com/search?${params}`, {
+  // `/search` no longer exists on the current version (v5); `/search-v2` returns the first 10 jobs.
+  const response = await fetch(`https://jsearch.p.rapidapi.com/search-v2?${params}`, {
     headers: { "x-rapidapi-key": process.env.JSEARCH_API_KEY!.trim(), "x-rapidapi-host": "jsearch.p.rapidapi.com" },
     signal: AbortSignal.timeout(60_000),
   });
   if (response.status === 429) throw new Error("JSearch's free monthly limit is used up. It resets next month.");
   if (response.status === 401 || response.status === 403) throw new Error("JSearch refused the key. Check JSEARCH_API_KEY in worker/.env.");
   if (!response.ok) throw new Error(`JSearch answered with error ${response.status}.`);
-  return parseJSearch((await response.json()) as { data?: JSearchJob[] });
+  return parseJSearch((await response.json()) as JSearchAnswer, remoteOnly);
 }

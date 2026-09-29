@@ -16,7 +16,7 @@ export type Board = Pick<Tables<"career_boards">, "ats" | "slug" | "company">;
 const NO_SALARY = { salary_min: null, salary_max: null, salary_currency: null, salary_raw: null };
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
-function decodeEntities(text: string) {
+export function decodeEntities(text: string) {
   return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, code: string) =>
     code[0] !== "#"
       ? (ENTITIES[code.toLowerCase()] ?? match)

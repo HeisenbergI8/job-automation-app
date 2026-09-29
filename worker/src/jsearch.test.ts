@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import jsearch from "../fixtures/jsearch.json";
 import { MAX_QUERIES, parseJSearch, searchJSearch, todaysSearches } from "./jsearch";
 
 afterEach(() => {
@@ -6,44 +7,41 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-// Built from JSearch's documented fields (search endpoint, `data[]`); replace with a recorded response.
-const body = {
-  status: "OK",
-  data: [
-    {
-      job_title: "AI Engineer",
-      employer_name: "Acme PH",
-      job_publisher: "LinkedIn",
-      job_apply_link: "https://www.linkedin.com/jobs/view/123",
-      job_description: "Build LLM features in TypeScript.",
-      job_is_remote: true,
-      job_location: "Manila, Philippines",
-      job_min_salary: 100000,
-      job_max_salary: 150000,
-      job_salary_currency: "PHP",
-      job_salary_period: "MONTH",
-    },
-    { job_title: "Full-Stack Engineer", employer_name: "Beta", job_publisher: "JobStreet Philippines", job_apply_link: "https://ph.jobstreet.com/job/9", job_is_remote: false, job_city: "Cebu", job_country: "PH", job_salary_period: "HOUR", job_min_salary: 10 },
-    { job_title: "No link", employer_name: "Gamma", job_publisher: "Indeed" },
-  ],
-};
-
-describe("parseJSearch", () => {
-  it("maps jobs, names the site and makes monthly pay yearly", () => {
-    const [linkedin, jobstreet, ...rest] = parseJSearch(body);
-    expect(rest).toEqual([]); // no apply link, dropped
+describe("parseJSearch (real /search-v2 answer, recorded 2026-09-29)", () => {
+  it("reads jobs from data.jobs, names the site and decodes the title", () => {
+    const [linkedin, glassdoor, other] = parseJSearch(jsearch);
     expect(linkedin).toMatchObject({
       site: "linkedin",
-      url: "https://www.linkedin.com/jobs/view/123",
-      company: "Acme PH",
-      role: "AI Engineer",
-      location: "Manila, Philippines",
-      remote: true,
-      salary_min: 1_200_000,
-      salary_max: 1_800_000,
-      salary_currency: "PHP",
+      company: "YO AI Labs",
+      role: "Software Engineer - Open Source Contributions - Remote",
+      location: "Cebu City, Cebu",
+      salary_min: null,
+      salary_currency: null,
     });
-    expect(jobstreet).toMatchObject({ site: "jobstreet", location: "Cebu, PH", remote: false, salary_min: null, salary_currency: null });
+    expect(linkedin.url).toMatch(/^https:\/\/ph\.linkedin\.com\/jobs\/view\//);
+    expect(glassdoor.site).toBe("glassdoor");
+    expect(other).toMatchObject({ site: "up2staff", role: "AI ML Engineering Internship – Thessaloniki, Greece" });
+  });
+
+  it("trusts a work-from-home search, since JSearch marks every result not remote", () => {
+    expect(parseJSearch(jsearch).every((job) => !job.remote)).toBe(true);
+    expect(parseJSearch(jsearch, true).every((job) => job.remote)).toBe(true);
+  });
+
+  it("makes monthly pay yearly, drops other periods, and skips jobs without a link", () => {
+    const body = {
+      data: {
+        jobs: [
+          { job_title: "A", employer_name: "X", job_publisher: "JobStreet Philippines", job_apply_link: "https://ph.jobstreet.com/job/1", job_min_salary: 100000, job_max_salary: 150000, job_salary_currency: "PHP", job_salary_period: "MONTH" },
+          { job_title: "B", employer_name: "Y", job_publisher: "Indeed", job_apply_link: "https://ph.indeed.com/viewjob?jk=2", job_min_salary: 10, job_salary_period: "HOUR" },
+          { job_title: "No link", employer_name: "Z", job_publisher: "Indeed" },
+        ],
+      },
+    };
+    const [monthly, hourly, ...rest] = parseJSearch(body);
+    expect(rest).toEqual([]);
+    expect(monthly).toMatchObject({ site: "jobstreet", salary_min: 1_200_000, salary_max: 1_800_000, salary_currency: "PHP" });
+    expect(hourly).toMatchObject({ site: "indeed", salary_min: null, salary_currency: null });
   });
 });
 
@@ -70,17 +68,18 @@ describe("todaysSearches", () => {
 });
 
 describe("searchJSearch", () => {
-  it("asks for remote jobs from the last 3 days with the RapidAPI key", async () => {
+  it("calls /search-v2 for remote jobs from the last 3 days with the RapidAPI key", async () => {
     vi.stubEnv("JSEARCH_API_KEY", "test-key-EXAMPLE");
-    const fetch = vi.fn(async () => Response.json(body));
+    const fetch = vi.fn(async () => Response.json(jsearch));
     vi.stubGlobal("fetch", fetch);
-    await searchJSearch({ role: "AI Engineer", country: "ph" }, true);
+    const jobs = await searchJSearch({ role: "AI Engineer", country: "ph" }, true);
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toContain("https://jsearch.p.rapidapi.com/search?query=AI+Engineer");
+    expect(url).toContain("https://jsearch.p.rapidapi.com/search-v2?query=AI+Engineer");
     expect(url).toContain("country=ph");
     expect(url).toContain("date_posted=3days");
     expect(url).toContain("work_from_home=true");
     expect((init.headers as Record<string, string>)["x-rapidapi-host"]).toBe("jsearch.p.rapidapi.com");
+    expect(jobs.every((job) => job.remote)).toBe(true);
   });
 
   it("explains a used-up free plan", async () => {

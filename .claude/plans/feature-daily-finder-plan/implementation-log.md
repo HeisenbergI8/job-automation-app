@@ -132,3 +132,16 @@ The owner asked me to set up their profile and run it. From `JohnRossRivera-CV.p
 - **Other fixes:** the `keywordFit` docstring now lists the remote-only dealbreaker, and two counts in this log are corrected (4 tries in total; 6 JSearch tests).
 - **Gate:** `npm run verify` 73/73 (2 new tests). A local keyword run completed.
 - **Still open:** a live JSearch call and a real fixture, waiting on the owner's key. Stage 6 should block auto-apply with an allowlist of apply-link hosts (Greenhouse, Lever, Ashby), not only `site` names.
+
+## First live JSearch runs — 2026-09-29
+
+The owner's RapidAPI key is in `worker/.env`. The first live call showed the documentation-based code was wrong in three ways, now fixed against a recorded real answer (`worker/fixtures/jsearch.json`, trimmed):
+- `/search` returns 404 ("Endpoint '/search' does not exist") on v5. The endpoint is now `/search-v2`, and the `page` and `num_pages` params are dropped (it returns the first 10 plus a cursor).
+- Jobs sit in `data.jobs`, not `data`, and fields come back as `null` rather than missing.
+- Every result of a `work_from_home=true` search came back `job_is_remote: false`, so the remote-only dealbreaker would have dropped all of them. `parseJSearch(body, remoteSearch)` now trusts the search filter, and Claude still reads each description.
+- Titles are HTML-entity decoded (`&#8211;` becomes –).
+- Publishers seen: LinkedIn, Glassdoor, BeBee, Trabajo.org, Remote, Up2staff (no JobStreet in that sample).
+- Quota headers confirmed the free limit: `x-ratelimit-requests-limit` 200.
+- **Full hosted run:** 3011 read, 10 scored by Claude Code, 0 new jobs at 50 or more, Telegram sent, no errors. The quota went 198 → 192 (all 6 searches ran). Today's rotation landed on narrow combinations (TypeScript Engineer in au, sg and gb), so JSearch added few jobs. A broad check ("Software Engineer", ph) returned 10.
+- Runs now print how many jobs came from career pages and from JSearch, including per search.
+- Gate: `npm run verify` 75/75. The key was exposed in an owner screenshot and in the command transcript, so the owner was advised to regenerate it in RapidAPI.

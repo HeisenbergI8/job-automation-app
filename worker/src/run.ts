@@ -74,16 +74,21 @@ async function findJobs(errors: string[]) {
   // LinkedIn, Indeed, JobStreet and others through JSearch, when the owner has set up a key. Dry runs
   // skip it: the free plan is 200 searches a month, and test runs shouldn't use them up.
   if (process.env.JSEARCH_API_KEY?.trim() && dryRun) console.log("Dry run: JSearch skipped to save your monthly searches.");
+  const fromCareerPages = postings.length;
   if (process.env.JSEARCH_API_KEY?.trim() && !dryRun) {
     for (const search of todaysSearches(settings.data)) {
       try {
-        postings.push(...(await searchJSearch(search, settings.data.remote_preference === "remote")));
+        const found = await searchJSearch(search, settings.data.remote_preference === "remote");
+        console.log(`JSearch "${search.role}" (${search.country}): ${found.length} jobs`);
+        postings.push(...found);
       } catch (error) {
         errors.push(`JSearch "${search.role}" (${search.country}): ${message(error)}`);
         if (/limit is used up|refused the key/.test(message(error))) break;
       }
     }
   }
+
+  console.log(`Read ${fromCareerPages} from career pages and ${postings.length - fromCareerPages} from JSearch.`);
 
   // Saved jobs and jobs Claude already scored are skipped, so each run reviews jobs it hasn't seen.
   const fresh = dedupe(postings, [...saved.data, ...seen.data]);
