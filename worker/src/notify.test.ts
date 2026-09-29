@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { batchMessage, needsManualMessage, sendTelegram, setRetryDelayForTests } from "./notify";
 import type { Ranked } from "./scoring";
 
 const job: Ranked = {
@@ -72,5 +72,38 @@ describe("sendTelegram", () => {
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.telegram.org/bot123:abc/sendMessage");
     expect(JSON.parse(String(init.body))).toMatchObject({ chat_id: "42", text: "hi", parse_mode: "HTML" });
+  });
+
+  describe("on a flaky connection", () => {
+    beforeEach(() => {
+      setRetryDelayForTests(0);
+      vi.stubEnv("TELEGRAM_BOT_TOKEN", "123:abc");
+      vi.stubEnv("TELEGRAM_CHAT_ID", "42");
+    });
+
+    it("retries a dropped connection", async () => {
+      const fetch = vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("fetch failed"))
+        .mockResolvedValueOnce(Response.json({ ok: true }));
+      vi.stubGlobal("fetch", fetch);
+      expect(await sendTelegram("hi")).toBe(true);
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("gives up after four tries, without the token in the error", async () => {
+      const fetch = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+      vi.stubGlobal("fetch", fetch);
+      await expect(sendTelegram("hi")).rejects.toThrow("Couldn't reach Telegram after 4 tries.");
+      await expect(sendTelegram("hi")).rejects.not.toThrow("123:abc");
+      expect(fetch).toHaveBeenCalledTimes(8);
+    });
+
+    it("doesn't retry when Telegram itself refuses", async () => {
+      const fetch = vi.fn(async () => new Response("chat not found", { status: 400 }));
+      vi.stubGlobal("fetch", fetch);
+      await expect(sendTelegram("hi")).rejects.toThrow("Telegram refused the message (400)");
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
   });
 });

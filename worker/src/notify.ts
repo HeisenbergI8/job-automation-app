@@ -48,13 +48,28 @@ export async function sendTelegram(text: string) {
     console.log(`[Telegram isn't set up; message below]\n${text}\n`);
     return false;
   }
-  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", link_preview_options: { is_disabled: true } }),
-    signal: AbortSignal.timeout(30_000),
-  });
-  // Never include the URL in the error: it contains the bot token.
+  // The owner's connection to Telegram drops connections now and then (seen 2026-09-29), so a failed
+  // connection is retried; a refusal from Telegram itself is not.
+  let response: Response | undefined;
+  for (let attempt = 1; !response; attempt++) {
+    try {
+      response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", link_preview_options: { is_disabled: true } }),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (error) {
+      // Never include the URL in the error: it contains the bot token.
+      if (attempt === SEND_ATTEMPTS) throw new Error(`Couldn't reach Telegram after ${SEND_ATTEMPTS} tries.`, { cause: error });
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt));
+    }
+  }
   if (!response.ok) throw new Error(`Telegram refused the message (${response.status}): ${await response.text()}`);
   return true;
 }
+
+const SEND_ATTEMPTS = 4;
+let retryDelayMs = 5_000;
+/** Tests only: skip the wait between retries. */
+export const setRetryDelayForTests = (ms: number) => (retryDelayMs = ms);
