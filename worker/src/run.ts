@@ -1,4 +1,5 @@
-// ROADMAP stage 5: the daily finder. Reads the company career pages in Settings, removes duplicates,
+// ROADMAP stage 5: the daily finder. Reads the company career pages in Settings and, with a JSearch key,
+// LinkedIn/Indeed/JobStreet via JSearch; skips jobs already saved or already scored; removes duplicates,
 // scores, saves up to 3 jobs scoring MIN_FIT or more as `found`, logs the run in worker_runs and tells the owner on Telegram.
 //   npm start        hosted project (worker/.env); what the daily schedule runs
 //   npm run dev      local stack (worker/.env.local)
@@ -9,6 +10,7 @@ import { createServiceClient } from "./db";
 import { dedupe } from "./dedupe";
 import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
 import { claudeCodeScorer, pickTop, rank, type Ranked } from "./scoring";
+import { searchJSearch, todaysSearches } from "./jsearch";
 import { fetchBoard, type Posting } from "./sources";
 
 const dryRun = process.argv.includes("--dry-run");
@@ -41,14 +43,16 @@ function toJob(job: Ranked): TablesInsert<"jobs"> {
 }
 
 async function findJobs(errors: string[]) {
-  const [settings, boards, saved] = await Promise.all([
+  const [settings, boards, saved, seen] = await Promise.all([
     db.from("settings").select("*").single(),
     db.from("career_boards").select("*").order("created_at"),
     db.from("jobs").select("url, company, role, location"),
+    db.from("seen_postings").select("url, company, role, location"),
   ]);
   if (settings.error) throw settings.error;
   if (boards.error) throw boards.error;
   if (saved.error) throw saved.error;
+  if (seen.error) throw seen.error;
   if (!boards.data.length) errors.push("No company career pages in Settings yet.");
 
   const postings: Posting[] = [];
@@ -67,10 +71,33 @@ async function findJobs(errors: string[]) {
     if (error) throw error;
   }
 
-  const fresh = dedupe(postings, saved.data);
+  // LinkedIn, Indeed, JobStreet and others through JSearch, when the owner has set up a key.
+  if (process.env.JSEARCH_API_KEY?.trim()) {
+    for (const search of todaysSearches(settings.data)) {
+      try {
+        postings.push(...(await searchJSearch(search, settings.data.remote_preference === "remote")));
+      } catch (error) {
+        errors.push(`JSearch "${search.role}" (${search.country}): ${message(error)}`);
+        if (/limit is used up|refused the key/.test(message(error))) break;
+      }
+    }
+  }
+
+  // Saved jobs and jobs Claude already scored are skipped, so each run reviews jobs it hasn't seen.
+  const fresh = dedupe(postings, [...saved.data, ...seen.data]);
   const scorer = process.env.SCORER === "keywords" ? null : claudeCodeScorer(settings.data, parseMasterCv(settings.data.master_cv));
   const { ranked, errors: scoringErrors } = await rank(fresh, settings.data, scorer);
   errors.push(...scoringErrors);
+
+  // Remember what Claude scored (a keyword-only score is retried on a later run).
+  const reviewed = ranked.filter((job) => job.scoredBy === "claude-code");
+  if (!dryRun && reviewed.length) {
+    const { error } = await db.from("seen_postings").upsert(
+      reviewed.map(({ url, company, role, location, score }) => ({ url, company, role, location, score })),
+      { onConflict: "url", ignoreDuplicates: true },
+    );
+    if (error) throw error;
+  }
   return { fetched: postings.length, fresh: fresh.length, ranked };
 }
 

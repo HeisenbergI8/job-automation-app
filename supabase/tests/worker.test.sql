@@ -1,6 +1,6 @@
 -- ROADMAP 5.1 / 5.2: the company list refuses duplicates and unsafe slugs; only the worker writes runs.
 begin;
-select plan(5);
+select plan(7);
 
 insert into public.career_boards (ats, slug) values ('lever', 'Acme');
 
@@ -15,6 +15,9 @@ select throws_ok(
   '23514', null, 'a slug can''t carry a path');
 select ok(not has_table_privilege('authenticated', 'public.worker_runs', 'INSERT'), 'only the worker writes the run log');
 select ok(has_table_privilege('authenticated', 'public.worker_runs', 'SELECT'), 'the owner can read the run log');
+
+select ok(not has_table_privilege('authenticated', 'public.seen_postings', 'INSERT'), 'only the worker records seen postings');
+select ok(has_table_privilege('authenticated', 'public.seen_postings', 'SELECT'), 'the owner can read seen postings');
 
 select * from finish();
 rollback;

@@ -125,6 +125,19 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"seen_postings": {
+                  Row: {
+                    "company": string,"first_seen_at": string,"location": string | null,"role": string,"score": number | null,"url": string
+                  }
+                  Insert: {
+                    "company": string,"first_seen_at"?: string,"location"?: string | null,"role": string,"score"?: number | null,"url": string
+                  }
+                  Update: {
+                    "company"?: string,"first_seen_at"?: string,"location"?: string | null,"role"?: string,"score"?: number | null,"url"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"settings": {
                   Row: {
                     "excluded_keywords": (string)[],"follow_up_after_days": number,"ghost_after_days": number,"id": boolean,"locations": (string)[],"master_cv": Json | null,"must_have_keywords": (string)[],"remote_preference": Database["public"]['Enums']["remote_preference"],"salary_currency": string | null,"salary_floor": number | null,"self_intro": string | null,"target_roles": (string)[],"updated_at": string

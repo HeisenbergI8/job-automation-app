@@ -110,8 +110,10 @@ without them.
 - [ ] **5.2 Career-page sources:** Greenhouse, Lever and Ashby public job boards, for the companies
   listed in Settings (`career_boards`). A board that can't be read is shown in red in Settings.
 - [ ] **5.3 Job-board sources, read-only:** LinkedIn, Indeed, JobStreet.
-  *Deferred (2026-09-29):* the first version reads company career pages only. Check each site's terms
-  and anti-bot rules before building. These sites are searched, never applied to.
+  *Built 2026-09-29 (owner request):* read through JSearch (RapidAPI, free plan of 200 requests a month),
+  which collects them from Google for Jobs. The finder never visits those sites itself. At most 6
+  searches a run (target roles × listed countries, remote, last 3 days). These sites are searched,
+  never applied to. Ticked after the owner's first run with a JSearch key.
 - [ ] **5.4 Duplicate removal** across sites (same company, role and location).
 - [ ] **5.5 Scoring.** Score each job against the criteria and master CV, keep the reasons, and save the
   top 3 each day as `found`, but only jobs scoring 50 or more (`MIN_FIT`), so some days save 0–2.

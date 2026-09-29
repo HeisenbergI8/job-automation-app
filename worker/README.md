@@ -11,8 +11,9 @@ Once a day, on your Mac, this:
 
 It also messages you when a job is marked **Needs manual**.
 
-It reads company career pages only (Greenhouse, Lever and Ashby). LinkedIn, Indeed and JobStreet
-aren't searched yet.
+It reads company career pages (Greenhouse, Lever and Ashby) and, with a free JSearch key (step 6b),
+LinkedIn, Indeed, JobStreet and other job sites. Jobs it has already reviewed are skipped, so each
+run looks at new ones.
 
 ## One-time setup
 
@@ -89,6 +90,20 @@ In the app, go to **Settings → Company career pages** and paste a company's jo
 `https://jobs.ashbyhq.com/company`. To find it, open the company's Careers page and click any job:
 the address bar shows one of those sites. If a link is wrong, the finder marks it in red there after
 its next run.
+
+### 6b. Add LinkedIn, Indeed and JobStreet (optional, free)
+
+The finder can also look at LinkedIn, Indeed, JobStreet, Glassdoor and other job sites through
+**JSearch**, a job-search service with a free plan (200 searches a month, no credit card). The finder
+never visits those sites itself, so nothing can get blocked. It makes at most 6 searches a run: your
+target roles in the countries you listed, remote only, posted in the last 3 days.
+
+1. Go to https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch and sign up (Google sign-in works).
+2. Click **Subscribe to Test** (or **Pricing**) and choose the free **Basic** plan.
+3. On the API's page, find **X-RapidAPI-Key** (in the code examples on the right) and copy it.
+4. Open `worker/.env` and paste it after `JSEARCH_API_KEY=`. Save.
+
+Without a key, the finder simply skips this step.
 
 ### 7. Try it
 
