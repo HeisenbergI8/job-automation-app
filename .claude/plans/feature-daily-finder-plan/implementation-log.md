@@ -165,3 +165,12 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **Checked with real Claude calls (2):** both jobs were re-scored `eligible=false` (15 and 5), with the right reasons.
 - **Gate:** `npm run verify` 87/87 (6 new tests).
 - **Owner decision pending:** whether to remove the two wrongly sent jobs from the list.
+
+## Owner feedback: results aren't the jobs they see; read job-alert emails — 2026-09-29
+
+- The owner found the results unreal or hard to apply for. PostHog's page says "Timezone(s) GMT +2 to GMT -8", which excludes the Philippines. The underlying causes: the 14 boards I picked mostly hire in the US and Europe, and JSearch returns about 1 LinkedIn job per 10 results. The owner chose to have the finder read their own job-alert emails, and PostHog was removed (and marked reviewed).
+- **Time zones:** the eligibility rule now covers working-hour time zones that exclude where the candidate lives.
+- **`worker/src/alerts.ts`:** Gmail IMAP, INBOX opened read-only, alert emails from `linkedin.com`, `jobstreet` and `indeed.com` in the last 2 days, at most 8 new emails a run. Claude Code lists the jobs in each email; each job must give the number of a link from the email's own numbered link list, so links can't be invented, and jobs with an out-of-range number are dropped. Links are canonicalised: LinkedIn job id, JobStreet `/job/<id>`, Indeed `jk`. `site` is linkedin, jobstreet or indeed, so these jobs get the priority picks. Emails are recorded in the new `processed_emails` table (migration `20260929000400`, pushed) after the picks are saved, so each is read once.
+- `askClaudeCode` and `structuredOutput` were split out of `scoring.ts` for reuse. Dependencies added to the worker: imapflow and mailparser.
+- **Gate:** `npm run verify` 90/90, `db:test` 29/29.
+- **Not verified yet:** everything live. The owner still has to create alerts and a Gmail app password. The first real alert emails will show whether extraction and link handling fit each site's format.

@@ -125,6 +125,19 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"processed_emails": {
+                  Row: {
+                    "jobs_found": number,"message_id": string,"processed_at": string,"site": string
+                  }
+                  Insert: {
+                    "jobs_found"?: number,"message_id": string,"processed_at"?: string,"site": string
+                  }
+                  Update: {
+                    "jobs_found"?: number,"message_id"?: string,"processed_at"?: string,"site"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"seen_postings": {
                   Row: {
                     "company": string,"first_seen_at": string,"location": string | null,"role": string,"score": number | null,"url": string

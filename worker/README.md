@@ -105,6 +105,23 @@ target roles in the countries you listed, remote only, posted in the last 3 days
 
 Without a key, the finder simply skips this step.
 
+### 6c. Read your LinkedIn, JobStreet and Indeed job alerts (recommended)
+
+This gets you the same jobs you'd see on those sites. The finder reads your job-alert emails from Gmail
+(read-only: it never changes, deletes or sends mail) and scores the jobs in them.
+
+1. **Create job alerts** with your Gmail address:
+   - LinkedIn: Jobs → search (e.g. "AI Engineer", Philippines) → filter **Remote** → turn on **Set alert**
+     (daily, email).
+   - JobStreet (ph.jobstreet.com): search → **Save search / Get job alerts** (email, daily).
+   - Indeed (ph.indeed.com): search → **Get new jobs for this search by email**.
+2. **Create a Gmail app password**: turn on 2-Step Verification at myaccount.google.com → Security,
+   then open https://myaccount.google.com/apppasswords, name it "Job finder" and click **Create**.
+3. Open `worker/.env`: check `GMAIL_ADDRESS` is your Gmail, and paste the 16-letter app password after
+   `GMAIL_APP_PASSWORD=`. Save.
+
+Each alert email is read once. To stop, delete the app password in your Google account.
+
 ### 7. Try it
 
     cd ~/Desktop/personal/job-automation-app/worker

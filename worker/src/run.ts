@@ -6,6 +6,7 @@
 //   --dry-run        reads and scores, records board errors, saves no jobs and sends nothing
 import { parseMasterCv } from "@/lib/master-cv";
 import type { TablesInsert } from "@/lib/supabase/types";
+import { readJobAlerts, type AlertEmail } from "./alerts";
 import { createServiceClient } from "./db";
 import { dedupe, NEW_WITHIN_DAYS, recentOnly } from "./dedupe";
 import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
@@ -92,7 +93,24 @@ async function findJobs(errors: string[]) {
     }
   }
 
-  console.log(`Read ${fromCareerPages} from career pages and ${postings.length - fromCareerPages} from JSearch.`);
+  const fromJSearch = postings.length - fromCareerPages;
+
+  // The owner's own LinkedIn, JobStreet and Indeed job-alert emails, when Gmail is set up. Each email
+  // is read once; it's marked as read (processed_emails) after the day's picks are saved.
+  let alertEmails: AlertEmail[] = [];
+  if (process.env.GMAIL_ADDRESS?.trim() && process.env.GMAIL_APP_PASSWORD?.trim()) {
+    const { data: done, error } = await db.from("processed_emails").select("message_id");
+    if (error) throw error;
+    try {
+      alertEmails = await readJobAlerts(new Set(done.map((row) => row.message_id)), errors);
+      for (const email of alertEmails) postings.push(...email.postings);
+    } catch (error) {
+      errors.push(`Gmail: ${message(error)}`);
+    }
+  }
+  console.log(
+    `Read ${fromCareerPages} from career pages, ${fromJSearch} from JSearch and ${postings.length - fromCareerPages - fromJSearch} from ${alertEmails.length} new job-alert emails.`,
+  );
 
   // Only jobs posted in the last week, minus saved jobs and jobs Claude already scored.
   const recent = recentOnly(postings);
@@ -103,7 +121,7 @@ async function findJobs(errors: string[]) {
   const bySite = ranked.reduce<Record<string, number>>((count, job) => ((count[job.site] = (count[job.site] ?? 0) + 1), count), {});
   console.log(`Reviewed ${ranked.length}: ${Object.entries(bySite).map(([site, n]) => `${n} ${site}`).join(", ")}.`);
   errors.push(...scoringErrors);
-  return { fetched: postings.length, fresh: fresh.length, ranked, jsearchSearches };
+  return { fetched: postings.length, fresh: fresh.length, ranked, jsearchSearches, alertEmails };
 }
 
 /** Whether a real run already used JSearch today (the Mac's local day). */
@@ -165,7 +183,7 @@ async function main() {
   const errors: string[] = [];
 
   try {
-    const { fetched, fresh, ranked, jsearchSearches } = await findJobs(errors);
+    const { fetched, fresh, ranked, jsearchSearches, alertEmails } = await findJobs(errors);
     // 0–3 jobs: only those scoring MIN_FIT or more. A note (e.g. a link that won't open) goes first,
     // so it is the first thing the owner reads, in the app and on Telegram.
     const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
@@ -176,6 +194,13 @@ async function main() {
       if (insertError) throw insertError;
     }
     if (!dryRun) await rememberRejected(ranked);
+    if (!dryRun && alertEmails.length) {
+      const { error: emailsError } = await db.from("processed_emails").upsert(
+        alertEmails.map((email) => ({ message_id: email.messageId, site: email.site, jobs_found: email.postings.length })),
+        { onConflict: "message_id", ignoreDuplicates: true },
+      );
+      if (emailsError) throw emailsError;
+    }
 
     const notified = await send(batchMessage(top, errors, fresh));
     const until = new Date().toISOString();
