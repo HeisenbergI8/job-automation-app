@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupe, dedupeKey } from "./dedupe";
+import { dedupe, dedupeKey, recentOnly } from "./dedupe";
 import type { Posting } from "./sources";
 
 const posting = (overrides: Partial<Posting>): Posting => ({
@@ -28,6 +28,19 @@ describe("dedupeKey", () => {
     expect(dedupeKey({ company: "Acme", role: "Dev", location: "Manila" })).not.toBe(
       dedupeKey({ company: "Acme", role: "Dev", location: "Cebu" }),
     );
+  });
+});
+
+describe("recentOnly", () => {
+  it("keeps jobs from the last 7 days and jobs with no date", () => {
+    const now = new Date("2026-09-29T12:00:00Z");
+    const jobs = [
+      posting({ url: "new", posted_at: "2026-09-27T00:00:00Z" }),
+      posting({ url: "edge", posted_at: "2026-09-22T12:00:00Z" }),
+      posting({ url: "old", posted_at: "2026-08-01T00:00:00Z" }),
+      posting({ url: "undated", posted_at: null }),
+    ];
+    expect(recentOnly(jobs, now).map((job) => job.url)).toEqual(["new", "edge", "undated"]);
   });
 });
 

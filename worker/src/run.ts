@@ -7,7 +7,7 @@
 import { parseMasterCv } from "@/lib/master-cv";
 import type { TablesInsert } from "@/lib/supabase/types";
 import { createServiceClient } from "./db";
-import { dedupe } from "./dedupe";
+import { dedupe, NEW_WITHIN_DAYS, recentOnly } from "./dedupe";
 import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
 import { claudeCodeScorer, pickTop, rank, rejectedByClaude, type Ranked } from "./scoring";
 import { searchJSearch, todaysSearches } from "./jsearch";
@@ -71,12 +71,16 @@ async function findJobs(errors: string[]) {
     if (error) throw error;
   }
 
-  // LinkedIn, Indeed, JobStreet and others through JSearch, when the owner has set up a key. Dry runs
-  // skip it: the free plan is 200 searches a month, and test runs shouldn't use them up.
-  if (process.env.JSEARCH_API_KEY?.trim() && dryRun) console.log("Dry run: JSearch skipped to save your monthly searches.");
+  // LinkedIn, Indeed, JobStreet and others through JSearch, when the owner has set up a key: on the
+  // first run of the day only (owner's option A), so three daily runs fit the free 200 a month. Dry
+  // runs skip it too.
   const fromCareerPages = postings.length;
-  if (process.env.JSEARCH_API_KEY?.trim() && !dryRun) {
+  let jsearchSearches = 0;
+  if (process.env.JSEARCH_API_KEY?.trim() && dryRun) console.log("Dry run: JSearch skipped to save your monthly searches.");
+  else if (process.env.JSEARCH_API_KEY?.trim() && (await jsearchRanToday())) console.log("JSearch already ran today; career pages only.");
+  else if (process.env.JSEARCH_API_KEY?.trim()) {
     for (const search of todaysSearches(settings.data)) {
+      jsearchSearches++;
       try {
         const found = await searchJSearch(search, settings.data.remote_preference === "remote");
         console.log(`JSearch "${search.role}" (${search.country}): ${found.length} jobs`);
@@ -90,12 +94,29 @@ async function findJobs(errors: string[]) {
 
   console.log(`Read ${fromCareerPages} from career pages and ${postings.length - fromCareerPages} from JSearch.`);
 
-  // Saved jobs and jobs Claude already scored are skipped, so each run reviews jobs it hasn't seen.
-  const fresh = dedupe(postings, [...saved.data, ...seen.data]);
+  // Only jobs posted in the last week, minus saved jobs and jobs Claude already scored.
+  const recent = recentOnly(postings);
+  console.log(`${recent.length} of them were posted in the last ${NEW_WITHIN_DAYS} days.`);
+  const fresh = dedupe(recent, [...saved.data, ...seen.data]);
   const scorer = process.env.SCORER === "keywords" ? null : claudeCodeScorer(settings.data, parseMasterCv(settings.data.master_cv));
   const { ranked, errors: scoringErrors } = await rank(fresh, settings.data, scorer);
+  const bySite = ranked.reduce<Record<string, number>>((count, job) => ((count[job.site] = (count[job.site] ?? 0) + 1), count), {});
+  console.log(`Reviewed ${ranked.length}: ${Object.entries(bySite).map(([site, n]) => `${n} ${site}`).join(", ")}.`);
   errors.push(...scoringErrors);
-  return { fetched: postings.length, fresh: fresh.length, ranked };
+  return { fetched: postings.length, fresh: fresh.length, ranked, jsearchSearches };
+}
+
+/** Whether a real run already used JSearch today (the Mac's local day). */
+async function jsearchRanToday() {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const { count, error } = await db
+    .from("worker_runs")
+    .select("id", { count: "exact", head: true })
+    .gt("jsearch_searches", 0)
+    .gte("started_at", midnight.toISOString());
+  if (error) throw error;
+  return (count ?? 0) > 0;
 }
 
 /** Records the jobs Claude rejected (see `rejectedByClaude`), after the day's picks are saved. */
@@ -144,7 +165,7 @@ async function main() {
   const errors: string[] = [];
 
   try {
-    const { fetched, fresh, ranked } = await findJobs(errors);
+    const { fetched, fresh, ranked, jsearchSearches } = await findJobs(errors);
     // 0–3 jobs: only those scoring MIN_FIT or more. A note (e.g. a link that won't open) goes first,
     // so it is the first thing the owner reads, in the app and on Telegram.
     const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
@@ -173,6 +194,7 @@ async function main() {
         saved: dryRun ? 0 : top.length,
         errors,
         notified,
+        jsearch_searches: jsearchSearches,
       })
       .eq("id", run.id);
     if (logError) throw logError;

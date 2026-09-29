@@ -153,13 +153,13 @@ isOneToOne: false
                   ]
                 },"worker_runs": {
                   Row: {
-                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"id": string,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"started_at": string
+                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"id": string,"jsearch_searches": number,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"started_at": string
                   }
                   Insert: {
-                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
                   }
                   Update: {
-                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
                   }
                   Relationships: [
                     

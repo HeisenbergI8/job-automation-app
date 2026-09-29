@@ -30,7 +30,7 @@ describe("batchMessage", () => {
     expect(text).toContain("<b>Today's top 3 jobs</b>");
     expect(text).toContain("Not applied yet: open each link and apply, then mark it Applied in the app.");
     expect(text).toContain('1. <a href="https://jobs.lever.co/acme/1">Frontend Engineer</a> at R&amp;D &lt;Labs&gt;');
-    expect(text).toContain("Fit 86/100");
+    expect(text).toContain("Fit 86/100 · company careers page ·");
     expect(text).toContain("• Has 2 of 2 must-have keywords.");
     expect(text).not.toContain("• Remote.");
   });
@@ -39,9 +39,15 @@ describe("batchMessage", () => {
     expect(batchMessage([job], [], 12)).toContain("<b>Only 1 of today's 12 new jobs scored 50 or more</b>");
   });
 
-  it("says so when no job reached the minimum score, and lists problems", () => {
-    const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 40);
-    expect(text).toContain("No jobs today: none of the 40 new jobs scored 50 or more.");
+  it("labels the closest match when nothing reached the minimum score", () => {
+    const text = batchMessage([{ ...job, site: "linkedin", score: 42 }], [], 40);
+    expect(text).toContain("No new job scored 50 or more today. Here's the closest of 40:");
+    expect(text).toContain("Fit 42/100 · LinkedIn ·");
+  });
+
+  it("says so when there are no new jobs at all, and lists problems", () => {
+    const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 0);
+    expect(text).toContain("No new jobs today (0 checked).");
     expect(text).toContain("<b>Problems</b>\n• acme (lever): Board not found.");
   });
 });

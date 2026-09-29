@@ -17,6 +17,7 @@ describe("parseJSearch (real /search-v2 answer, recorded 2026-09-29)", () => {
       location: "Cebu City, Cebu",
       salary_min: null,
       salary_currency: null,
+      posted_at: "2026-09-27T00:00:00.000Z",
     });
     expect(linkedin.url).toMatch(/^https:\/\/ph\.linkedin\.com\/jobs\/view\//);
     expect(glassdoor.site).toBe("glassdoor");

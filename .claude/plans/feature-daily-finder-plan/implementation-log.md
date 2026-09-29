@@ -145,3 +145,15 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **Full hosted run:** 3011 read, 10 scored by Claude Code, 0 new jobs at 50 or more, Telegram sent, no errors. The quota went 198 → 192 (all 6 searches ran). Today's rotation landed on narrow combinations (TypeScript Engineer in au, sg and gb), so JSearch added few jobs. A broad check ("Software Engineer", ph) returned 10.
 - Runs now print how many jobs came from career pages and from JSearch, including per search.
 - Gate: `npm run verify` 75/75. The key was exposed in an owner screenshot and in the command transcript, so the owner was advised to regenerate it in RapidAPI.
+
+## Owner request: new jobs only, preferred sites, variety, a job every day, option A — 2026-09-29
+
+- **New only:** `posted_at` is read from every source (Greenhouse `first_published`, Lever `createdAt`, Ashby `publishedAt`, JSearch `job_posted_at_datetime_utc`; field names checked live) and `recentOnly` keeps the last 7 days (`NEW_WITHIN_DAYS`). Live: the median posting age on these boards was 39–76 days; in the hosted run 245 of 3023 jobs were from the last 7 days.
+- **Priority and variety:** `pickTop` takes the best LinkedIn, then JobStreet, then Indeed job scoring 50 or more, then fills from other sites, one per site first. `rank`'s shortlist (now 12) always includes the best 3 from each priority site.
+- **A job every day:** if nothing reaches 50, `pickTop` returns the single closest match, labelled "Closest match today: it scored N, below your usual 50", and Telegram says so. This relaxes decision 4 (MIN_FIT) at the owner's request.
+- **Option A:** migration `20260929000300` adds `worker_runs.jsearch_searches`. JSearch runs only if no run since the Mac's local midnight used it; checked live (1 run today, so a second run skips).
+- **JSearch can't target a site:** "via LinkedIn", "via JobStreet" and "via Indeed" queries each returned 0 jobs. A normal search returns about 1 LinkedIn and 1 Indeed job per 10; JobStreet is rare. Preference is applied at the pick stage.
+- **Schedule:** `schedule.sh` now defaults to `HOURS="8 13 18"` (a `StartCalendarInterval` array; plist lint OK). Not installed; that's the owner's step.
+- **Telegram:** the site is shown for each pick ("LinkedIn", "company careers page", …). Runs print per-search JSearch counts, the recent count and which sites Claude reviewed.
+- **Hosted run:** 3023 read (18 from JSearch), 245 recent, 241 new, 12 scored. None reached 50, so the closest match (35/100) was saved and sent. One JSearch search timed out (60s).
+- **Gate:** `npm run verify` 81/81, `db:test` 28/28.

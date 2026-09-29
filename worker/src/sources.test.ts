@@ -17,6 +17,7 @@ describe("parseGreenhouse", () => {
       location: "Remote, Bangalore",
       remote: true,
       salary_min: null,
+      posted_at: "2026-05-22T09:16:29-04:00",
     });
     expect(job.description).toMatch(/^GitLab is the intelligent orchestration platform/);
     expect(job.description).not.toMatch(/[<>]|&lt;|&quot;/);
@@ -40,6 +41,7 @@ describe("parseLever", () => {
       salary_min: 144000,
       salary_max: 193000,
       salary_currency: "USD",
+      posted_at: "2026-05-04T23:11:01.125Z",
     });
     expect(job.description).toContain("In this role, you will:\n- Create test strategies and test plans");
     expect(job.description).toContain("About Zoox");
@@ -58,6 +60,7 @@ describe("parseAshby", () => {
       salary_max: 185000,
       salary_currency: "EUR",
       salary_raw: "€110K - €185K",
+      posted_at: "2026-07-24T10:49:09.045+00:00",
     });
   });
 });

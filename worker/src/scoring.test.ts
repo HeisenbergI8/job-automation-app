@@ -134,8 +134,37 @@ describe("pickTop", () => {
     expect(pickTop(ranked).map((job) => job.url)).toEqual(["a", "b", "c"]);
   });
 
-  it("saves fewer than three, or none, when too few jobs reach the minimum", () => {
+  it("saves fewer than three when too few jobs reach the minimum", () => {
     expect(pickTop([scored("a", 72), scored("b", MIN_FIT), scored("c", MIN_FIT - 1)]).map((job) => job.url)).toEqual(["a", "b"]);
-    expect(pickTop([scored("a", 49), scored("b", 10)])).toEqual([]);
+  });
+
+  it("still gives the single closest match when nothing reaches the minimum, labelled as such", () => {
+    const [closest, ...rest] = pickTop([scored("a", 49), scored("b", 10)]);
+    expect(rest).toEqual([]);
+    expect(closest.url).toBe("a");
+    expect(closest.reasons[0]).toBe(`Closest match today: it scored 49, below your usual ${MIN_FIT}.`);
+    expect(pickTop([])).toEqual([]);
+  });
+
+  const at = (url: string, score: number, site: string) => ({ ...scored(url, score), site }) as Ranked;
+
+  it("puts LinkedIn, JobStreet and Indeed first, in that order, even above a higher score elsewhere", () => {
+    const ranked = [at("careers", 95, "greenhouse"), at("indeed", 70, "indeed"), at("linkedin", 60, "linkedin"), at("jobstreet", 55, "jobstreet")];
+    expect(pickTop(ranked).map((job) => job.url)).toEqual(["linkedin", "jobstreet", "indeed"]);
+  });
+
+  it("fills with other sites, one per site first, when the priority sites have too few", () => {
+    const ranked = [at("gh1", 90, "greenhouse"), at("gh2", 85, "greenhouse"), at("glass", 70, "glassdoor"), at("linkedin", 60, "linkedin")];
+    expect(pickTop(ranked).map((job) => job.url)).toEqual(["linkedin", "gh1", "glass"]);
+  });
+});
+
+describe("rank's shortlist", () => {
+  it("always reviews the best few from each priority site, even when other sites score higher", async () => {
+    const many = Array.from({ length: 20 }, (_, i) => posting({ url: `careers-${i}`, site: "greenhouse" }));
+    const linkedin = posting({ url: "linkedin-1", site: "linkedin", description: "React only." });
+    const { ranked } = await rank([...many, linkedin], criteria, null, 12);
+    expect(ranked).toHaveLength(12);
+    expect(ranked.some((job) => job.url === "linkedin-1")).toBe(true);
   });
 });

@@ -23,6 +23,13 @@ export function dedupeKey(job: Omit<Identity, "url">) {
   return [company, role, clean(job.location ?? "")].join("|");
 }
 
+/** Only jobs posted in the last `days` days count as new (owner, 2026-09-29). An unknown date is kept. */
+export const NEW_WITHIN_DAYS = 7;
+export function recentOnly<T extends { posted_at?: string | null }>(postings: T[], now = new Date(), days = NEW_WITHIN_DAYS) {
+  const cutoff = now.getTime() - days * 86_400_000;
+  return postings.filter((posting) => !posting.posted_at || Date.parse(posting.posted_at) >= cutoff);
+}
+
 /** Postings that aren't already saved (by URL or by key), each kept once; the first one seen wins. */
 export function dedupe(postings: Posting[], saved: Identity[]) {
   const urls = new Set(saved.map((job) => job.url));

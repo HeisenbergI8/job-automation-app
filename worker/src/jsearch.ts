@@ -40,6 +40,7 @@ type JSearchJob = {
   job_max_salary?: number | null;
   job_salary_currency?: string | null;
   job_salary_period?: string | null;
+  job_posted_at_datetime_utc?: string | null;
 };
 
 /** "LinkedIn" → "linkedin", "JobStreet Philippines" → "jobstreet": the names stage 6 blocks auto-applying on. */
@@ -83,6 +84,7 @@ export function parseJSearch(body: JSearchAnswer, remoteSearch = false): Posting
         salary_currency: min != null || max != null ? (job.job_salary_currency ?? null) : null,
         salary_raw: null,
         remote: remoteSearch || job.job_is_remote === true,
+        posted_at: job.job_posted_at_datetime_utc ?? null,
       };
     });
 }

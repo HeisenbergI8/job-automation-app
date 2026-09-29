@@ -34,9 +34,31 @@ export function rejectedByClaude(ranked: Ranked[]) {
   return ranked.filter((job) => job.scoredBy === "claude-code" && job.score < MIN_FIT);
 }
 
-/** The day's picks: the best jobs at or above MIN_FIT, at most TOP of them. `ranked` is best first. */
-export function pickTop(ranked: Ranked[]) {
-  return ranked.filter((job) => job.score >= MIN_FIT).slice(0, TOP);
+/** Owner's order of preference (2026-09-29). Other sites and company career pages fill the rest. */
+export const PRIORITY_SITES = ["linkedin", "jobstreet", "indeed"];
+
+/**
+ * The day's picks from `ranked` (best first), at most TOP:
+ * 1. the best LinkedIn, JobStreet and Indeed jobs scoring MIN_FIT or more, in that order;
+ * 2. then the best from other sites, one per site first, so the picks come from several sites;
+ * 3. if nothing reaches MIN_FIT, the single closest match, labelled as below the bar, so the owner
+ *    still gets a job every day (owner, 2026-09-29).
+ */
+export function pickTop(ranked: Ranked[]): Ranked[] {
+  const good = ranked.filter((job) => job.score >= MIN_FIT);
+  if (!good.length) {
+    const best = ranked[0];
+    if (!best) return [];
+    return [{ ...best, reasons: [`Closest match today: it scored ${best.score}, below your usual ${MIN_FIT}.`, ...best.reasons] }];
+  }
+  const picks: Ranked[] = [];
+  const take = (job: Ranked | undefined) => {
+    if (job && picks.length < TOP && !picks.includes(job)) picks.push(job);
+  };
+  for (const site of PRIORITY_SITES) take(good.find((job) => job.site === site));
+  for (const job of good) if (!picks.some((pick) => pick.site === job.site)) take(job);
+  for (const job of good) take(job);
+  return picks;
 }
 
 const OPEN_TO_ALL = /\b(global|worldwide|anywhere|international)\b/i;
@@ -119,12 +141,15 @@ export function keywordFit(posting: Posting, criteria: Criteria): Fit {
  * returns them best first. After two failures in a row the scorer isn't asked again this run; those
  * jobs keep their keyword score and say so.
  */
-export async function rank(postings: Posting[], criteria: Criteria, scorer: Scorer | null, shortlist = 10) {
-  const candidates = postings
+export async function rank(postings: Posting[], criteria: Criteria, scorer: Scorer | null, shortlist = 12) {
+  const sorted = postings
     .map((posting) => ({ ...posting, ...keywordFit(posting, criteria) }))
     .filter((job) => job.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, shortlist);
+    .sort((a, b) => b.score - a.score);
+  // The best few from each priority site always get a Claude review, so the many company-page jobs
+  // can't crowd LinkedIn, JobStreet and Indeed out; the rest of the shortlist is the best of the others.
+  const candidates = new Set(PRIORITY_SITES.flatMap((site) => sorted.filter((job) => job.site === site).slice(0, 3)));
+  for (const job of sorted) if (candidates.size < shortlist) candidates.add(job);
 
   const ranked: Ranked[] = [];
   const errors: string[] = [];

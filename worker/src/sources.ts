@@ -10,6 +10,8 @@ export type Posting = Required<Pick<TablesInsert<"jobs">, JobFields>> & {
   remote: boolean;
   /** Something the owner must know before applying, e.g. that the link won't open. */
   note?: string;
+  /** When the job was first posted (ISO), if the board says; used to keep only new jobs. */
+  posted_at?: string | null;
 };
 export type Board = Pick<Tables<"career_boards">, "ats" | "slug" | "company">;
 
@@ -41,7 +43,9 @@ export function htmlToText(html: string) {
     .trim();
 }
 
-type GreenhouseBoard = { jobs: { absolute_url: string; title: string; company_name?: string; location?: { name?: string }; content?: string }[] };
+type GreenhouseBoard = {
+  jobs: { absolute_url: string; title: string; company_name?: string; location?: { name?: string }; content?: string; first_published?: string }[];
+};
 
 export function parseGreenhouse(body: GreenhouseBoard, board: Board): Posting[] {
   return body.jobs.map((job) => {
@@ -56,6 +60,7 @@ export function parseGreenhouse(body: GreenhouseBoard, board: Board): Posting[] 
       description: htmlToText(decodeEntities(job.content ?? "")),
       ...NO_SALARY,
       remote: /remote/i.test(location ?? ""),
+      posted_at: job.first_published ?? null,
     };
   });
 }
@@ -69,6 +74,7 @@ type LeverPosting = {
   lists?: { text: string; content: string }[];
   additionalPlain?: string;
   salaryRange?: { currency?: string; min?: number; max?: number };
+  createdAt?: number;
 };
 
 export function parseLever(body: LeverPosting[], board: Board): Posting[] {
@@ -87,6 +93,7 @@ export function parseLever(body: LeverPosting[], board: Board): Posting[] {
       salary_currency: job.salaryRange?.currency ?? null,
       salary_raw: null,
       remote: job.workplaceType === "remote" || /remote/i.test(location ?? ""),
+      posted_at: job.createdAt ? new Date(job.createdAt).toISOString() : null,
     };
   });
 }
@@ -100,6 +107,7 @@ type AshbyBoard = {
     isRemote?: boolean;
     workplaceType?: string;
     descriptionPlain?: string;
+    publishedAt?: string;
     compensation?: {
       scrapeableCompensationSalarySummary?: string | null;
       summaryComponents?: { compensationType: string; currencyCode: string | null; minValue: number | null; maxValue: number | null }[];
@@ -124,6 +132,7 @@ export function parseAshby(body: AshbyBoard, board: Board): Posting[] {
         salary_currency: salary?.currencyCode ?? null,
         salary_raw: job.compensation?.scrapeableCompensationSalarySummary ?? null,
         remote: job.isRemote === true || job.workplaceType === "Remote",
+        posted_at: job.publishedAt ?? null,
       };
     });
 }

@@ -121,8 +121,10 @@ This time the jobs appear in your Jobs list and the message arrives on Telegram.
 
     npm run schedule
 
-It now runs every day at 8:00 in your Mac's local time. To pick another hour, e.g. 7 in the evening:
-`HOUR=19 npm run schedule`. Your Mac doesn't have to be awake at 8:00:
+It now runs every day at 8:00, 13:00 and 18:00 in your Mac's local time. LinkedIn, Indeed and
+JobStreet (JSearch) are searched on the first run of the day only, which keeps you inside the free 200
+searches a month; the other runs check company career pages. To pick other hours, e.g. twice a day:
+`HOURS="8 20" npm run schedule`. Your Mac doesn't have to be awake at those times:
 
 - **Asleep at 8:00** (lid closed, for example): the finder runs as soon as the Mac wakes. If it slept
   through several 8:00s, you get one run on wake, not one per missed day.

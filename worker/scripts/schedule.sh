@@ -1,11 +1,18 @@
 #!/bin/sh
 # Installs or removes the daily job finder as a launchd job for this Mac user.
-#   npm run schedule     install: every day at $HOUR:00, or on wake if the Mac was asleep then
+#   npm run schedule     install: every day at 8:00, 13:00 and 18:00 (change with HOURS="8 20"),
+#                        or on wake if the Mac was asleep then
 #   npm run unschedule   remove
 # Run it from a normal Terminal window: it records where node and claude are, because launchd
 # doesn't load your shell's PATH.
 set -eu
-HOUR="${HOUR:-8}"
+# Owner's choice (2026-09-29): three runs a day. LinkedIn/Indeed/JobStreet (JSearch) are searched on
+# the first run of the day only, so this fits JSearch's free plan.
+HOURS="${HOURS:-8 13 18}"
+INTERVALS=""
+for H in $HOURS; do
+  INTERVALS="$INTERVALS<dict><key>Hour</key><integer>$H</integer><key>Minute</key><integer>0</integer></dict>"
+done
 LABEL=com.jobautomation.finder
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 WORKER="$(cd "$(dirname "$0")/.." && pwd)"
@@ -39,7 +46,7 @@ cat > "$PLIST" <<PLIST_EOF
     <key>CLAUDE_BIN</key><string>$CLAUDE_BIN</string>
   </dict>
   <key>StartCalendarInterval</key>
-  <dict><key>Hour</key><integer>$HOUR</integer><key>Minute</key><integer>0</integer></dict>
+  <array>$INTERVALS</array>
   <key>StandardOutPath</key><string>$WORKER/logs/finder.log</string>
   <key>StandardErrorPath</key><string>$WORKER/logs/finder.log</string>
 </dict>
@@ -48,6 +55,6 @@ PLIST_EOF
 
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
-echo "Installed. The job finder runs every day at $HOUR:00."
+echo "Installed. The job finder runs every day at these hours: $HOURS (24-hour clock)."
 echo "To run it now as a test:  launchctl kickstart $DOMAIN/$LABEL"
 echo "Its output goes to:       $WORKER/logs/finder.log"

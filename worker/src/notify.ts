@@ -3,6 +3,12 @@
 import { formatSalary } from "@/lib/jobs";
 import { MIN_FIT, TOP, type Ranked } from "./scoring";
 
+// How each source is named to the owner.
+const SITE_NAMES: Record<string, string> = {
+  linkedin: "LinkedIn", jobstreet: "JobStreet", indeed: "Indeed", glassdoor: "Glassdoor",
+  greenhouse: "company careers page", lever: "company careers page", ashby: "company careers page",
+};
+
 const escape = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const short = (text: string) => (text.length > 200 ? `${text.slice(0, 199)}…` : text);
@@ -12,12 +18,14 @@ const short = (text: string) => (text.length > 200 ? `${text.slice(0, 199)}…` 
  * when fewer than TOP jobs (or none) out of the `checked` new postings reached MIN_FIT.
  */
 export function batchMessage(saved: Ranked[], problems: string[], checked: number) {
-  const heading =
-    saved.length >= TOP
+  const belowBar = saved.length === 1 && saved[0].score < MIN_FIT;
+  const heading = belowBar
+    ? `<b>No new job scored ${MIN_FIT} or more today. Here's the closest of ${checked}:</b>`
+    : saved.length >= TOP
       ? `<b>Today's top ${TOP} jobs</b>`
       : saved.length
         ? `<b>Only ${saved.length} of today's ${checked} new jobs scored ${MIN_FIT} or more</b>`
-        : `<b>No jobs today: none of the ${checked} new jobs scored ${MIN_FIT} or more.</b>`;
+        : `<b>No new jobs today (${checked} checked).</b>`;
   const lines = [heading];
   // Nothing is applied automatically until stage 6 (auto-apply) exists.
   if (saved.length) lines.push("Not applied yet: open each link and apply, then mark it Applied in the app.");
@@ -25,7 +33,7 @@ export function batchMessage(saved: Ranked[], problems: string[], checked: numbe
     lines.push(
       "",
       `${index + 1}. <a href="${escape(job.url)}">${escape(job.role)}</a> at ${escape(job.company)}`,
-      `Fit ${job.score}/100 · ${escape(job.location ?? "Location not stated")} · ${escape(formatSalary(job))}`,
+      `Fit ${job.score}/100 · ${escape(SITE_NAMES[job.site] ?? job.site)} · ${escape(job.location ?? "Location not stated")} · ${escape(formatSalary(job))}`,
       ...job.reasons.slice(0, 2).map((reason) => `• ${escape(short(reason))}`),
     );
   });
