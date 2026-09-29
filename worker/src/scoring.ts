@@ -30,6 +30,8 @@ export function pickTop(ranked: Ranked[]) {
   return ranked.filter((job) => job.score >= MIN_FIT).slice(0, TOP);
 }
 
+const OPEN_TO_ALL = /\b(global|worldwide|anywhere|international)\b/i;
+
 /** Keyword rules from Settings. Score 0 means a dealbreaker: an excluded keyword or pay below the floor. */
 export function keywordFit(posting: Posting, criteria: Criteria): Fit {
   const text = `${posting.role}\n${posting.description}`;
@@ -44,6 +46,12 @@ export function keywordFit(posting: Posting, criteria: Criteria): Fit {
     (!criteria.salary_currency || criteria.salary_currency === posting.salary_currency.toUpperCase());
   if (comparable && pay < criteria.salary_floor!) {
     return { score: 0, reasons: [`Pays ${formatSalary(posting)}, below your floor of ${criteria.salary_floor}.`] };
+  }
+
+  // Owner's rule (2026-09-29): with "Remote only", an office job is a dealbreaker, so it can't take
+  // one of the shortlist places Claude reviews.
+  if (criteria.remote_preference === "remote" && !posting.remote) {
+    return { score: 0, reasons: ["Not remote, and you want remote only."] };
   }
 
   let score = 0;
@@ -68,8 +76,17 @@ export function keywordFit(posting: Posting, criteria: Criteria): Fit {
 
   const place = criteria.locations.find((location) => mentions(posting.location ?? "", location));
   if (criteria.remote_preference === "remote") {
-    if (posting.remote) score += 20;
-    reasons.push(posting.remote ? "Remote." : "Not remote.");
+    // Many "remote" jobs are limited to one country ("Remote, US"). Full points only when the job is
+    // open everywhere, or names one of the owner's locations.
+    const where = posting.location ?? "";
+    const openToAll = OPEN_TO_ALL.test(where) || !where.replace(/remote|[^a-z]/gi, "");
+    if (place || openToAll || !criteria.locations.length) {
+      score += 20;
+      reasons.push(place ? `Remote, in ${place}.` : "Remote.");
+    } else {
+      score += 5;
+      reasons.push(`Remote, but it may be limited to ${where}.`);
+    }
   } else if (place || (posting.remote && criteria.remote_preference === "any")) {
     score += 20;
     reasons.push(place ? `In ${place}.` : "Remote.");

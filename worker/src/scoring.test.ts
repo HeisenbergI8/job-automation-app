@@ -49,6 +49,21 @@ describe("keywordFit", () => {
     expect(fit.reasons).toContain("Has 1 of 2 must-have keywords (missing: TypeScript).");
   });
 
+  it("treats an office job as a dealbreaker when the owner wants remote only", () => {
+    expect(keywordFit(posting({ remote: false, location: "San Francisco" }), criteria)).toEqual({
+      score: 0,
+      reasons: ["Not remote, and you want remote only."],
+    });
+  });
+
+  it("gives full location points only to remote jobs open to the owner's locations", () => {
+    expect(keywordFit(posting({ location: "Remote, Global" }), criteria).score).toBe(100);
+    expect(keywordFit(posting({ location: "Remote - Manila" }), criteria).score).toBe(100);
+    const usOnly = keywordFit(posting({ location: "Remote, US" }), criteria);
+    expect(usOnly.score).toBe(85);
+    expect(usOnly.reasons).toContain("Remote, but it may be limited to Remote, US.");
+  });
+
   it("is neutral when the owner has set no criteria", () => {
     const none: Criteria = { ...criteria, target_roles: [], locations: [], remote_preference: "any", salary_floor: null, must_have_keywords: [], excluded_keywords: [] };
     expect(keywordFit(posting({ remote: false, location: "Cebu" }), none).score).toBe(50);
