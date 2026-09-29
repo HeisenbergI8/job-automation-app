@@ -15,6 +15,9 @@ export type Posting = Required<Pick<TablesInsert<"jobs">, JobFields>> & {
 };
 export type Board = Pick<Tables<"career_boards">, "ats" | "slug" | "company">;
 
+// Hybrid and on-site aren't remote, whatever a board's remote flag says (owner, 2026-09-29).
+export const NOT_REMOTE = /\b(hybrid|on-?site|in[- ]office)\b/i;
+
 const NO_SALARY = { salary_min: null, salary_max: null, salary_currency: null, salary_raw: null };
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
@@ -59,7 +62,7 @@ export function parseGreenhouse(body: GreenhouseBoard, board: Board): Posting[] 
       // `content` is entity-escaped HTML ("&lt;p&gt;"), so it is decoded once before the tags go.
       description: htmlToText(decodeEntities(job.content ?? "")),
       ...NO_SALARY,
-      remote: /remote/i.test(location ?? ""),
+      remote: /remote/i.test(location ?? "") && !NOT_REMOTE.test(location ?? ""),
       posted_at: job.first_published ?? null,
     };
   });
@@ -92,7 +95,7 @@ export function parseLever(body: LeverPosting[], board: Board): Posting[] {
       salary_max: job.salaryRange?.max ?? null,
       salary_currency: job.salaryRange?.currency ?? null,
       salary_raw: null,
-      remote: job.workplaceType === "remote" || /remote/i.test(location ?? ""),
+      remote: job.workplaceType ? job.workplaceType === "remote" : /remote/i.test(location ?? "") && !NOT_REMOTE.test(location ?? ""),
       posted_at: job.createdAt ? new Date(job.createdAt).toISOString() : null,
     };
   });
@@ -131,7 +134,8 @@ export function parseAshby(body: AshbyBoard, board: Board): Posting[] {
         salary_max: salary?.maxValue ?? null,
         salary_currency: salary?.currencyCode ?? null,
         salary_raw: job.compensation?.scrapeableCompensationSalarySummary ?? null,
-        remote: job.isRemote === true || job.workplaceType === "Remote",
+        // Ashby sets isRemote on hybrid jobs too (527 of OpenAI's, seen 2026-09-29), so workplaceType wins.
+        remote: job.workplaceType ? job.workplaceType === "Remote" : job.isRemote === true,
         posted_at: job.publishedAt ?? null,
       };
     });

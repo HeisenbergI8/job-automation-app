@@ -157,3 +157,11 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **Telegram:** the site is shown for each pick ("LinkedIn", "company careers page", …). Runs print per-search JSearch counts, the recent count and which sites Claude reviewed.
 - **Hosted run:** 3023 read (18 from JSearch), 245 recent, 241 new, 12 scored. None reached 50, so the closest match (35/100) was saved and sent. One JSearch search timed out (60s).
 - **Gate:** `npm run verify` 81/81, `db:test` 28/28.
+
+## Owner feedback: a US-only job and a hybrid job were sent — 2026-09-29
+
+- **US-only (Prometheum via learn4good, "Anywhere"):** Claude was never told where the candidate lives, because `cvText` leaves out contact details. The prompt now includes "Where the candidate lives" (the CV contact location). Claude's answer has a required `eligible` boolean: false when applicants are limited to other countries or need a permit, or when the owner wants remote only and the job is hybrid or on-site. `pickTop` never picks an ineligible job, not even as the closest match, and `rejectedByClaude` remembers it so it isn't reviewed again.
+- **Hybrid (OpenAI, Paris):** Ashby sets `isRemote: true` on hybrid jobs; live, 527 of OpenAI's jobs are `isRemote=true, workplaceType=Hybrid`. Remote now follows `workplaceType` for Ashby and Lever. For Greenhouse locations and JSearch title/location, `NOT_REMOTE` (hybrid, on-site, in-office) overrides the remote flag and JSearch's remote-search trust.
+- **Checked with real Claude calls (2):** both jobs were re-scored `eligible=false` (15 and 5), with the right reasons.
+- **Gate:** `npm run verify` 87/87 (6 new tests).
+- **Owner decision pending:** whether to remove the two wrongly sent jobs from the list.

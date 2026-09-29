@@ -65,6 +65,24 @@ describe("parseAshby", () => {
   });
 });
 
+describe("hybrid isn't remote", () => {
+  it("goes by Ashby's workplaceType, since Ashby flags hybrid jobs isRemote too", () => {
+    const board = { jobs: [
+      { title: "Paris", jobUrl: "https://jobs.ashbyhq.com/x/1", isRemote: true, workplaceType: "Hybrid" },
+      { title: "Anywhere", jobUrl: "https://jobs.ashbyhq.com/x/2", isRemote: true, workplaceType: "Remote" },
+      { title: "Unset", jobUrl: "https://jobs.ashbyhq.com/x/3", isRemote: true },
+    ] };
+    expect(parseAshby(board, { ats: "ashby", slug: "x", company: null }).map((job) => job.remote)).toEqual([false, true, true]);
+  });
+
+  it("reads hybrid in a Greenhouse location or a Lever workplace type", () => {
+    const gh = { jobs: [{ absolute_url: "u", title: "t", location: { name: "Remote / Hybrid - London" } }] };
+    expect(parseGreenhouse(gh, { ats: "greenhouse", slug: "x", company: null })[0].remote).toBe(false);
+    const lever = [{ text: "t", hostedUrl: "u", categories: { location: "Remote" }, workplaceType: "hybrid" }];
+    expect(parseLever(lever, { ats: "lever", slug: "x", company: null })[0].remote).toBe(false);
+  });
+});
+
 describe("htmlToText", () => {
   it("decodes entities and keeps list items on their own lines", () => {
     expect(htmlToText("<p>R&amp;D &#8211; team</p><ul><li>One</li><li>Two</li></ul>")).toBe("R&D – team\n- One\n- Two");

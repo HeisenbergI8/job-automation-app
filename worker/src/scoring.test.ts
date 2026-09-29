@@ -159,6 +159,25 @@ describe("pickTop", () => {
   });
 });
 
+describe("eligibility", () => {
+  const job = (url: string, score: number, eligible?: boolean) => ({ ...posting({ url }), score, reasons: [], scoredBy: "claude-code", eligible }) as Ranked;
+
+  it("never picks a job the owner can't apply for, not even as the closest match", () => {
+    expect(pickTop([job("us-only", 90, false), job("ok", 70)]).map((j) => j.url)).toEqual(["ok"]);
+    expect(pickTop([job("us-only", 35, false), job("weak", 20)]).map((j) => j.url)).toEqual(["weak"]);
+    expect(pickTop([job("us-only", 35, false)])).toEqual([]);
+  });
+
+  it("remembers ineligible jobs so they aren't reviewed again", () => {
+    expect(rejectedByClaude([job("us-only", 60, false), job("good", 70, true)]).map((j) => j.url)).toEqual(["us-only"]);
+  });
+
+  it("reads eligibility from Claude's answer", () => {
+    const answer = JSON.stringify({ ...claudeOutput, structured_output: { score: 12, reasons: ["US residents only."], eligible: false } });
+    expect(parseClaudeOutput(answer)).toEqual({ score: 12, reasons: ["US residents only."], eligible: false });
+  });
+});
+
 describe("rank's shortlist", () => {
   it("always reviews the best few from each priority site, even when other sites score higher", async () => {
     const many = Array.from({ length: 20 }, (_, i) => posting({ url: `careers-${i}`, site: "greenhouse" }));

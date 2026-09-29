@@ -3,7 +3,7 @@
 // itself: it only reads JSearch's results and passes on the links. JSearch's free plan is 200
 // requests a month, so a run makes at most MAX_QUERIES and rotates through the combinations daily.
 import type { Criteria } from "./scoring";
-import { decodeEntities, type Posting } from "./sources";
+import { decodeEntities, NOT_REMOTE, type Posting } from "./sources";
 
 export const MAX_QUERIES = 6;
 
@@ -83,7 +83,7 @@ export function parseJSearch(body: JSearchAnswer, remoteSearch = false): Posting
         salary_max: max,
         salary_currency: min != null || max != null ? (job.job_salary_currency ?? null) : null,
         salary_raw: null,
-        remote: remoteSearch || job.job_is_remote === true,
+        remote: (remoteSearch || job.job_is_remote === true) && !NOT_REMOTE.test(`${job.job_title} ${job.job_location ?? ""}`),
         posted_at: job.job_posted_at_datetime_utc ?? null,
       };
     });

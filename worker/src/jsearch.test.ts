@@ -29,6 +29,15 @@ describe("parseJSearch (real /search-v2 answer, recorded 2026-09-29)", () => {
     expect(parseJSearch(jsearch, true).every((job) => job.remote)).toBe(true);
   });
 
+  it("doesn't trust the remote filter for a job its title or location calls hybrid or on-site", () => {
+    const body = { data: { jobs: [
+      { job_title: "AI Engineer (Hybrid)", employer_name: "A", job_publisher: "LinkedIn", job_apply_link: "https://x/1" },
+      { job_title: "AI Engineer", employer_name: "B", job_publisher: "LinkedIn", job_apply_link: "https://x/2", job_location: "Onsite - Makati" },
+      { job_title: "AI Engineer", employer_name: "C", job_publisher: "LinkedIn", job_apply_link: "https://x/3" },
+    ] } };
+    expect(parseJSearch(body, true).map((job) => job.remote)).toEqual([false, false, true]);
+  });
+
   it("makes monthly pay yearly, drops other periods, and skips jobs without a link", () => {
     const body = {
       data: {
