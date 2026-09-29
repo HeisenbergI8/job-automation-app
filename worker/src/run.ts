@@ -110,7 +110,9 @@ async function main() {
 
   try {
     const { fetched, fresh, ranked } = await findJobs(errors);
-    const top = pickTop(ranked); // 0–3 jobs: only those scoring MIN_FIT or more
+    // 0–3 jobs: only those scoring MIN_FIT or more. A note (e.g. a link that won't open) goes first,
+    // so it is the first thing the owner reads, in the app and on Telegram.
+    const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
     if (!dryRun && top.length) {
       const { error: insertError } = await db
         .from("jobs")

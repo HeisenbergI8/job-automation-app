@@ -28,6 +28,7 @@ describe("batchMessage", () => {
   it("lists each pick with its score, link and top two reasons, escaped for Telegram HTML", () => {
     const text = batchMessage([job, job, job], [], 12);
     expect(text).toContain("<b>Today's top 3 jobs</b>");
+    expect(text).toContain("Not applied yet: open each link and apply, then mark it Applied in the app.");
     expect(text).toContain('1. <a href="https://jobs.lever.co/acme/1">Frontend Engineer</a> at R&amp;D &lt;Labs&gt;');
     expect(text).toContain("Fit 86/100");
     expect(text).toContain("• Has 2 of 2 must-have keywords.");

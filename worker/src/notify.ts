@@ -19,6 +19,8 @@ export function batchMessage(saved: Ranked[], problems: string[], checked: numbe
         ? `<b>Only ${saved.length} of today's ${checked} new jobs scored ${MIN_FIT} or more</b>`
         : `<b>No jobs today: none of the ${checked} new jobs scored ${MIN_FIT} or more.</b>`;
   const lines = [heading];
+  // Nothing is applied automatically until stage 6 (auto-apply) exists.
+  if (saved.length) lines.push("Not applied yet: open each link and apply, then mark it Applied in the app.");
   saved.forEach((job, index) => {
     lines.push(
       "",

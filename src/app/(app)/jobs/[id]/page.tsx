@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDate, formatSalary, STATUS_LABELS } from "@/lib/jobs";
+import { formatDate, formatSalary, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
 import { cvText, parseMasterCv } from "@/lib/master-cv";
 import { requireOwner } from "@/lib/supabase/server";
 import { keywordScore } from "@/lib/tailoring/ats";
@@ -13,6 +13,18 @@ import { UploadForm } from "./upload-form";
 export const maxDuration = 300;
 
 const DOCUMENT_LABELS = { cv: "CV", cover_letter: "Cover letter", intro: "Intro" } as const;
+
+// What the owner should do next. Nothing is applied automatically until stage 6 (auto-apply) exists.
+const NEXT_STEP: Record<JobStatus, string> = {
+  found: "Not applied yet. Open the original posting, apply there, then change the status to Applied.",
+  needs_manual: "Apply by hand: open the original posting, apply there, then change the status to Applied.",
+  applied: "Applied. Waiting for a reply: change the status when they answer.",
+  screening: "In screening. Change the status when you hear back.",
+  interview: "Interviewing. Change the status when you hear back.",
+  offer: "Offer received.",
+  rejected: "Closed: rejected.",
+  ghosted: "Closed: no reply. If they answer later, change the status.",
+};
 
 export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
   const { id } = await params;
@@ -63,6 +75,11 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
           <a href={job.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">
             Original posting
           </a>
+        </p>
+        <p className="mt-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
+          <span className="font-semibold">Next step: </span>
+          {NEXT_STEP[job.status]}
+          {job.status === "applied" && job.date_applied && ` (applied ${formatDate(job.date_applied)}, ${job.apply_method ?? "manual"})`}
         </p>
       </div>
 

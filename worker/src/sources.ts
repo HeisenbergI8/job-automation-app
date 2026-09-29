@@ -5,7 +5,12 @@ import type { Tables, TablesInsert } from "@/lib/supabase/types";
 
 type JobFields = "site" | "url" | "company" | "role" | "location" | "description" | "salary_min" | "salary_max" | "salary_currency" | "salary_raw";
 // Every parser saves a description (possibly empty), so it is never null here.
-export type Posting = Required<Pick<TablesInsert<"jobs">, JobFields>> & { description: string; remote: boolean };
+export type Posting = Required<Pick<TablesInsert<"jobs">, JobFields>> & {
+  description: string;
+  remote: boolean;
+  /** Something the owner must know before applying, e.g. that the link won't open. */
+  note?: string;
+};
 export type Board = Pick<Tables<"career_boards">, "ats" | "slug" | "company">;
 
 const NO_SALARY = { salary_min: null, salary_max: null, salary_currency: null, salary_raw: null };
@@ -142,5 +147,23 @@ export async function fetchBoard(board: Board): Promise<Posting[]> {
   if (!Array.isArray(jobs)) throw new Error(`Unexpected answer from ${board.ats}.`);
   if (board.ats === "greenhouse") return parseGreenhouse(body as GreenhouseBoard, board);
   if (board.ats === "lever") return parseLever(body as LeverPosting[], board);
-  return parseAshby(body as AshbyBoard, board);
+  const postings = parseAshby(body as AshbyBoard, board);
+  if (postings.length === 0 || (await ashbyPagesOpen(board.slug))) return postings;
+  const company = postings[0].company;
+  const note = `${company} has switched off its Ashby job pages, so this link may not open. Apply on ${company}'s own careers site.`;
+  return postings.map((posting) => ({ ...posting, note }));
+}
+
+/**
+ * Some companies (PostHog, seen 2026-09-29) publish jobs through Ashby's API but switch off Ashby's
+ * job pages, so every job link shows "Page not found". An enabled page carries the company's
+ * details (`hostedJobsPageSlug`); a disabled one doesn't. When unsure, assume the pages are open.
+ */
+async function ashbyPagesOpen(slug: string) {
+  try {
+    const response = await fetch(`https://jobs.ashbyhq.com/${encodeURIComponent(slug)}`, { signal: AbortSignal.timeout(30_000) });
+    return (await response.text()).includes('"hostedJobsPageSlug"');
+  } catch {
+    return true;
+  }
 }

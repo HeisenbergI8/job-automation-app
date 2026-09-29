@@ -74,6 +74,16 @@ describe("fetchBoard", () => {
     await expect(fetchBoard({ ats: "ashby", slug: "nope", company: null })).rejects.toThrow("Board not found");
   });
 
+  it("notes that Ashby links won't open when the company has switched its job pages off", async () => {
+    const pages = { on: '<script>{"organization":{"hostedJobsPageSlug":"ashby"}}</script>', off: "<div id=root></div>" };
+    for (const state of ["on", "off"] as const) {
+      vi.stubGlobal("fetch", vi.fn(async (url: string) => (url.includes("api.ashbyhq.com") ? Response.json(ashby) : new Response(pages[state]))));
+      const [job] = await fetchBoard({ ats: "ashby", slug: "ashby", company: "Ashby" });
+      if (state === "on") expect(job.note).toBeUndefined();
+      else expect(job.note).toBe("Ashby has switched off its Ashby job pages, so this link may not open. Apply on Ashby's own careers site.");
+    }
+  });
+
   it("refuses an answer in an unexpected shape", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: "changed" })));
     await expect(fetchBoard({ ats: "greenhouse", slug: "gitlab", company: null })).rejects.toThrow("Unexpected answer");
