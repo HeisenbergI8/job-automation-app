@@ -1,11 +1,150 @@
-# Worker
+# Daily job finder
 
-Plain Node + Playwright script that runs once a day on my Mac:
+Once a day, on your Mac, this:
 
-1. Search job sites and read full job descriptions
-2. Score against my criteria and master CV, pick the top 3
-3. Tailor CV + cover letter
-4. Auto-apply where possible, otherwise send me the link (`needs_manual`)
-5. Write everything to Supabase
+1. reads the job boards of the companies you list in **Settings → Company career pages**,
+2. skips jobs you've already got,
+3. scores the rest against your criteria and CV,
+4. saves the best matches to your job list as **Found**, up to 3 a day and only jobs scoring 50 or
+   more (so some days it saves fewer, or none),
+5. sends you a Telegram message with them.
 
-Not part of the Next.js app, because a browser run takes minutes and would time out in a web request.
+It also messages you when a job is marked **Needs manual**.
+
+It reads company career pages only (Greenhouse, Lever and Ashby). LinkedIn, Indeed and JobStreet
+aren't searched yet.
+
+## One-time setup
+
+You'll type a few commands into **Terminal**. Press ⌘-Space, type "Terminal" and press Enter. Paste
+each command, press Enter, and wait for it to finish before the next one.
+
+### 1. Install the finder
+
+    cd ~/Desktop/personal/job-automation-app/worker
+    npm install
+
+### 2. Update the online database
+
+The finder needs two new tables in your hosted Supabase project. From the project folder:
+
+    cd ~/Desktop/personal/job-automation-app
+    npx supabase db push
+
+It lists the new migration (`20260929000100_worker.sql`). Select **Yes** and press Enter.
+
+### 3. Make a Telegram bot (about 5 minutes)
+
+1. Install Telegram on your phone or Mac and sign in.
+2. In Telegram, search for **@BotFather** (it has a blue check mark) and open the chat.
+3. Send `/newbot`. It asks for a name (anything, e.g. "My Job Finder"), then a username that must end
+   in `bot` (e.g. `ross_jobfinder_bot`).
+4. BotFather replies with a **token**, a long line like `1234567890:AAE...`. Copy it. Keep it
+   secret: anyone with it can send messages as your bot.
+5. Tap the link BotFather gives to open your new bot, press **Start**, and send it any message (e.g.
+   "hi"). The bot can only message you after you've messaged it.
+6. In your web browser, open this address, putting your token in place of `<TOKEN>` (keep the word
+   `bot` in front of it):
+   `https://api.telegram.org/bot<TOKEN>/getUpdates`
+7. On that page, find `"chat":{"id":` followed by a number, e.g. `"chat":{"id":987654321`. That
+   number is your **chat ID**. If the page shows only `"result":[]`, send the bot another message and
+   refresh the page.
+
+### 4. Create the finder's settings file
+
+    cd ~/Desktop/personal/job-automation-app/worker
+    cp .env.example .env
+    open -e .env
+
+TextEdit opens the file. Fill in these four, with nothing between the `=` and the value:
+
+- `SUPABASE_URL`: in the Supabase dashboard, open your project, go to **Project Settings → Data API**
+  and copy the **Project URL** (like `https://abcd1234.supabase.co`, with nothing after `.co`).
+- `SUPABASE_SERVICE_ROLE_KEY`: in **Project Settings → API Keys → Legacy API Keys**, click
+  **Reveal** next to **service_role** and copy it. This key can read and change everything, so never
+  share it or paste it anywhere else.
+- `TELEGRAM_BOT_TOKEN`: the token from step 3.4.
+- `TELEGRAM_CHAT_ID`: the number from step 3.7.
+
+Leave the rest as they are. **Don't add `ANTHROPIC_API_KEY` to this file**: if it's there, scoring
+is charged to the paid API instead of your Claude subscription. Save (⌘-S) and close TextEdit.
+
+### 5. Check Claude Code
+
+Scoring uses Claude Code with your Claude subscription. In Terminal:
+
+    claude --version
+
+If it prints a version number, you're set. If you've never signed in, run `claude` once, follow the
+sign-in steps, then type `/exit`. If Claude Code isn't available or hits its usage limit, the finder
+still works: it scores by your keywords instead, and the saved jobs say "Keyword score only".
+
+Before turning on the daily schedule, check that Anthropic's current terms allow this personal use
+(see "Is this allowed?" below).
+
+### 6. Add companies
+
+In the app, go to **Settings → Company career pages** and paste a company's job-board link, e.g.
+`https://jobs.lever.co/company`, `https://job-boards.greenhouse.io/company` or
+`https://jobs.ashbyhq.com/company`. To find it, open the company's Careers page and click any job:
+the address bar shows one of those sites. If a link is wrong, the finder marks it in red there after
+its next run.
+
+### 7. Try it
+
+    cd ~/Desktop/personal/job-automation-app/worker
+    npm run dry-run
+
+This reads and scores without saving or messaging, and prints what it would send. Scoring takes a
+couple of minutes. Then:
+
+    npm start
+
+This time the jobs appear in your Jobs list and the message arrives on Telegram.
+
+### 8. Run it every day
+
+    npm run schedule
+
+It now runs every day at 8:00 in your Mac's local time. To pick another hour, e.g. 7 in the evening:
+`HOUR=19 npm run schedule`. Your Mac doesn't have to be awake at 8:00:
+
+- **Asleep at 8:00** (lid closed, for example): the finder runs as soon as the Mac wakes. If it slept
+  through several 8:00s, you get one run on wake, not one per missed day.
+- **Shut down at 8:00**: don't count on a catch-up run. Apple only promises the catch-up after sleep.
+  Run `npm start` by hand if you want that day's jobs.
+
+To test the schedule straight away:
+
+    launchctl kickstart gui/$(id -u)/com.jobautomation.finder
+
+If macOS asks whether "node" or "claude" may use your keychain, choose **Always Allow**. To stop the
+daily runs: `npm run unschedule`.
+
+## Is this allowed?
+
+The finder asks Claude Code about 10 short questions a day, from a script on your own Mac, for your
+own use. Before running it daily:
+
+1. Read Anthropic's current **Consumer Terms of Service** and **Usage Policy** (linked at the bottom of
+   claude.ai), and the Claude Code documentation on **headless (non-interactive) mode** and on
+   **using Claude Code with a Pro or Max plan**.
+2. Check that scripted personal use like this is allowed on your plan, including any rule about
+   automated or scheduled use.
+3. If it isn't allowed, or you're not sure, add `SCORER=keywords` to `worker/.env`. The finder then
+   never calls Claude, and everything else works the same.
+
+## When something goes wrong
+
+- **The Telegram message lists "Problems"**: usually a company link that no longer works. Fix or
+  remove it in Settings.
+- **No message at all**: open `worker/logs/finder.log` (in Finder, or run `open -e logs/finder.log`
+  from the `worker` folder) and look at the last lines.
+- **"Keyword score only" on jobs**: Claude Code wasn't available, or was out of usage, that day.
+
+## For development
+
+`npm run dev` runs against the **local** Supabase stack using `worker/.env.local` (copy
+`.env.example`; the URL and `service_role` key come from `npx supabase status`). Leave the Telegram
+values empty and messages are printed instead. Add `-- --dry-run` to save nothing. `SCORER=keywords`
+skips Claude Code.

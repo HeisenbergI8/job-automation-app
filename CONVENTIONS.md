@@ -12,11 +12,13 @@ records every application, with its status timeline, and shows analytics. The fu
   Deployed on Vercel.
 - **Worker** (`worker/`): plain Node + Playwright. Runs once a day on the owner's Mac, not on Vercel.
 - **Supabase** (`supabase/`): Postgres, Storage (CVs, cover letters, intro videos) and Auth.
-- **Claude API**: fit scoring, CV and cover-letter tailoring, and self-intro adaptation.
+- **Claude**: CV and cover-letter tailoring and self-intro adaptation through the API (web app).
+  Fit scoring through Claude Code headless (`claude -p`) with the owner's subscription (worker).
 
-**State as of 2026-09-28:** roadmap stages 0–4 are built (foundation, job record and dashboard,
-analytics, settings, tailoring). `worker/` still contains only a README; stage 5 is next. Build in the
-order in `docs/ROADMAP.md`.
+**State as of 2026-09-29:** roadmap stages 0–4 are built (foundation, job record and dashboard,
+analytics, settings, tailoring). Stage 5, the daily finder in `worker/`, is built and verified against
+the local stack; its roadmap boxes are ticked after the owner's first run against the hosted project.
+Build in the order in `docs/ROADMAP.md`.
 
 ---
 
@@ -29,6 +31,8 @@ order in `docs/ROADMAP.md`.
 | Tests, one file | `npx vitest run src/lib/analytics.test.ts` |
 | Database tests | `npm run db:test` (pgTAP in `supabase/tests/`; needs the local stack running) |
 | New migration | add `supabase/migrations/<timestamp>_<name>.sql`, then `npm run db:reset` (also regenerates types) |
+| Push migrations to the hosted project | `npx supabase db push` (the worker writes to hosted) |
+| Run the worker | `cd worker && npm run dev` (local stack, `worker/.env.local`); `npm start` (hosted, `worker/.env`); add `--dry-run` to save and send nothing |
 | Run the app locally | `npm run db:start`, then `npm run dev` (setup in `README.md`) |
 
 The first two must stay in sync with `harness.config.json`. `db:test` is not in `verify` because it
@@ -71,6 +75,13 @@ Path alias: `@/*` → `src/*`.
   `OWNER_EMAIL` and `OWNER_PASSWORD` in `.env.local`.
 - **React 19 resets a form after its action runs.** Forms that must keep their values after an error
   submit through `startTransition` in `onSubmit` (see `login-form.tsx`).
+- **The worker has its own env files.** `worker/.env` points at the hosted project (the daily run),
+  `worker/.env.local` at the local stack (`npm run dev`). It never reads the root `.env.local`.
+- **Never put `ANTHROPIC_API_KEY` in the worker's env.** Claude Code would bill the API instead of the
+  subscription. `scoring.ts` also strips it from the child process.
+- **The worker runs TypeScript with `tsx`** and imports pure `src/lib` modules through `@/*`
+  (`worker/tsconfig.json` paths). Plain `node` can't resolve those imports. It still can't import
+  anything that imports `server-only`.
 - **Tailwind v4 is configured in CSS** (`@import "tailwindcss"` in `src/app/globals.css`). There is no
   `tailwind.config.js`, so don't create one.
 - **The worker never runs inside Next.js.** A browser run takes minutes and would time out in a web

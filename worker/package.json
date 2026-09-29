@@ -1,0 +1,20 @@
+{
+  "name": "job-finder-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx --env-file=.env src/run.ts",
+    "dry-run": "tsx --env-file=.env src/run.ts --dry-run",
+    "dev": "tsx --env-file=.env.local src/run.ts",
+    "schedule": "sh scripts/schedule.sh install",
+    "unschedule": "sh scripts/schedule.sh uninstall"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "tsx": "^4.23.15"
+  }
+}

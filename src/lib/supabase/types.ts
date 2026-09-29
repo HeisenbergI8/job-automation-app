@@ -36,6 +36,19 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"career_boards": {
+                  Row: {
+                    "ats": Database["public"]['Enums']["ats"],"company": string | null,"created_at": string,"id": string,"last_checked_at": string | null,"last_error": string | null,"slug": string
+                  }
+                  Insert: {
+                    "ats": Database["public"]['Enums']["ats"],"company"?: string | null,"created_at"?: string,"id"?: string,"last_checked_at"?: string | null,"last_error"?: string | null,"slug": string
+                  }
+                  Update: {
+                    "ats"?: Database["public"]['Enums']["ats"],"company"?: string | null,"created_at"?: string,"id"?: string,"last_checked_at"?: string | null,"last_error"?: string | null,"slug"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"intro_adaptations": {
                   Row: {
                     "adapted_text": string,"created_at": string,"decided_at": string | null,"id": string,"job_id": string,"requirements": string,"status": Database["public"]['Enums']["intro_status"]
@@ -125,6 +138,19 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"worker_runs": {
+                  Row: {
+                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"id": string,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"started_at": string
+                  }
+                  Insert: {
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
+                  }
+                  Update: {
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -158,7 +184,7 @@ isOneToOne: false
       } }
           }
           Enums: {
-            "apply_method": "auto"|"manual","document_kind": "cv"|"cover_letter"|"intro","intro_status": "pending"|"approved"|"rejected","job_status": "found"|"applied"|"needs_manual"|"screening"|"interview"|"offer"|"rejected"|"ghosted","remote_preference": "remote"|"hybrid"|"onsite"|"any"
+            "apply_method": "auto"|"manual","ats": "greenhouse"|"lever"|"ashby","document_kind": "cv"|"cover_letter"|"intro","intro_status": "pending"|"approved"|"rejected","job_status": "found"|"applied"|"needs_manual"|"screening"|"interview"|"offer"|"rejected"|"ghosted","remote_preference": "remote"|"hybrid"|"onsite"|"any"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -274,7 +300,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "apply_method": ["auto", "manual"],"document_kind": ["cv", "cover_letter", "intro"],"intro_status": ["pending", "approved", "rejected"],"job_status": ["found", "applied", "needs_manual", "screening", "interview", "offer", "rejected", "ghosted"],"remote_preference": ["remote", "hybrid", "onsite", "any"]
+            "apply_method": ["auto", "manual"],"ats": ["greenhouse", "lever", "ashby"],"document_kind": ["cv", "cover_letter", "intro"],"intro_status": ["pending", "approved", "rejected"],"job_status": ["found", "applied", "needs_manual", "screening", "interview", "offer", "rejected", "ghosted"],"remote_preference": ["remote", "hybrid", "onsite", "any"]
           }
         }
 } as const

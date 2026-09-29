@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { parseBoardLink } from "@/lib/career-boards";
 import { masterCvProblems, masterCvSchema } from "@/lib/master-cv";
 import { requireOwner } from "@/lib/supabase/server";
 import { Constants, type Enums, type TablesUpdate } from "@/lib/supabase/types";
@@ -82,4 +83,24 @@ export async function saveMasterCv(_prev: SettingsState, formData: FormData) {
   const problems = masterCvProblems(cv);
   if (problems.length) return { error: problems.join(" ") };
   return save({ master_cv: cv });
+}
+
+/** 5.2: add a company career page by pasting its job-board link. */
+export async function addCareerBoard(_prev: SettingsState, formData: FormData): Promise<SettingsState> {
+  const board = parseBoardLink(String(formData.get("link") ?? ""));
+  if ("error" in board) return { error: board.error };
+  const supabase = await requireOwner();
+  const company = String(formData.get("company") ?? "").trim() || null;
+  const { error } = await supabase.from("career_boards").insert({ ...board, company });
+  if (error) return { error: error.code === "23505" ? "That board is already on the list." : error.message };
+  revalidatePath("/settings");
+  return { saved: true };
+}
+
+/** 5.2 */
+export async function removeCareerBoard(formData: FormData) {
+  const supabase = await requireOwner();
+  const { error } = await supabase.from("career_boards").delete().eq("id", String(formData.get("id")));
+  if (error) throw error;
+  revalidatePath("/settings");
 }

@@ -8,7 +8,8 @@ enough to plan, build and verify one at a time. Tick a box only when its **Done 
 Small chunks can be built directly. For bigger ones (marked **[plan]**), have the `architect` agent
 write a plan in `.claude/plans/`, then run it with `/build <label> --plan <path>`.
 
-Last updated 2026-09-28. Stages 0–4 are built and verified; stage 5 is next.
+Last updated 2026-09-29. Stages 0–4 are built and verified; stage 5 is being built
+(plan: `.claude/plans/feature-daily-finder-plan/`).
 
 ---
 
@@ -104,19 +105,26 @@ without them.
 - [ ] **5.1 Worker scaffold.**
   - Its own `package.json` and `tsconfig.json` (and exclude `worker/` from the root tsconfig).
   - A Supabase service client.
-  - A run log.
-  - A once-a-day schedule on the Mac (launchd).
-- [ ] **5.2 Career-page sources:** Greenhouse, Lever and Ashby public job boards.
+  - A run log (`worker_runs` table, plus `worker/logs/finder.log`).
+  - A once-a-day schedule on the Mac (launchd, 8:00 local time; runs on wake if the Mac was asleep).
+- [ ] **5.2 Career-page sources:** Greenhouse, Lever and Ashby public job boards, for the companies
+  listed in Settings (`career_boards`). A board that can't be read is shown in red in Settings.
 - [ ] **5.3 Job-board sources, read-only:** LinkedIn, Indeed, JobStreet.
-  *Open:* check each site's terms and anti-bot rules before building. These sites are searched, never
-  applied to.
+  *Deferred (2026-09-29):* the first version reads company career pages only. Check each site's terms
+  and anti-bot rules before building. These sites are searched, never applied to.
 - [ ] **5.4 Duplicate removal** across sites (same company, role and location).
-- [ ] **5.5 Scoring.** Score each job with Claude against the criteria and master CV, keep the reasons, and
-  save the top 3 each day as `found`.
+- [ ] **5.5 Scoring.** Score each job against the criteria and master CV, keep the reasons, and save the
+  top 3 each day as `found`, but only jobs scoring 50 or more (`MIN_FIT`), so some days save 0–2.
+  *Decided:* Claude Code headless (`claude -p`, Sonnet) with the owner's subscription, no paid API.
+  Keyword-only scoring when Claude Code is unavailable.
 - [ ] **5.6 Notify the owner** about each new batch and each job marked `needs_manual`.
-  *Open:* how (email, push, Telegram and so on).
+  *Decided:* a Telegram bot.
 
 ## Stage 6: Auto-apply with link fallback **[plan]**
+
+*Decided 2026-09-29:* no paid API budget. As part of this stage, move CV/cover-letter tailoring and
+intro adaptation (4.1–4.6, `src/lib/claude.ts`) from the paid Claude API to Claude Code headless on
+the owner's subscription, the same way 5.5 scores. Stage 5 leaves `src/lib/claude.ts` unchanged.
 
 - [ ] **6.1 Hard block.** Refuse to apply on LinkedIn, Indeed and JobStreet, checked in code with a test.
   This comes before any apply code exists.
@@ -138,9 +146,13 @@ To be settled before the chunk they block:
 
 | Decision | Blocks |
 | --- | --- |
-| Which Claude model to use for scoring (tailoring uses Opus 5.5) | 5.5 |
 | Whether each job board's terms allow automated searching | 5.3 |
-| How to notify the owner | 5.6 |
 
 Settled on 2026-09-28: ghosting runs as a Vercel cron job (2.5), the master CV is structured sections
 (3.2), and tailoring uses Claude Opus 5.5 (4.1).
+
+Settled on 2026-09-29: scoring runs on Claude Code headless with the owner's subscription (Sonnet),
+with a keyword fallback, and only jobs scoring 50 or more are saved, so 0–3 a day (5.5). The first
+sources are Greenhouse, Lever and Ashby only, with LinkedIn, Indeed and JobStreet deferred (5.2, 5.3).
+Notifications go to Telegram (5.6). The worker runs daily at 8:00 via launchd (5.1). Tailoring moves
+off the paid API to Claude Code as part of stage 6.

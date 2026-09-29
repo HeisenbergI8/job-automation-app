@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { formatDate } from "@/lib/jobs";
 import { EMPTY_CV, parseMasterCv } from "@/lib/master-cv";
 import { requireOwner } from "@/lib/supabase/server";
-import { saveCriteria, saveFollowUp, saveMasterCv, saveSelfIntro } from "./actions";
+import { addCareerBoard, removeCareerBoard, saveCriteria, saveFollowUp, saveMasterCv, saveSelfIntro } from "./actions";
 import { CvEditor } from "./cv-editor";
 import { SettingsForm } from "./settings-form";
 
@@ -9,6 +10,8 @@ export default async function SettingsPage() {
   const supabase = await requireOwner();
   const { data: settings, error } = await supabase.from("settings").select("*").single();
   if (error) throw error;
+  const { data: boards, error: boardsError } = await supabase.from("career_boards").select("*").order("created_at");
+  if (boardsError) throw boardsError;
   const cv = parseMasterCv(settings.master_cv) ?? EMPTY_CV;
 
   return (
@@ -53,6 +56,46 @@ export default async function SettingsPage() {
             <label className="field">
               <span>Excluded keywords <span className="font-normal text-muted">(one per line)</span></span>
               <textarea name="excluded_keywords" rows={3} defaultValue={settings.excluded_keywords.join("\n")} />
+            </label>
+          </div>
+        </SettingsForm>
+      </section>
+
+      <section className="card">
+        <h2 className="section-title">Company career pages</h2>
+        <p className="mb-4 text-sm text-muted">
+          The daily finder reads these job boards. Paste the link to a company’s Greenhouse, Lever or Ashby
+          job board, for example https://jobs.lever.co/company.
+        </p>
+        {boards.length > 0 && (
+          <ul className="mb-4 flex flex-col gap-2 text-sm">
+            {boards.map((board) => (
+              <li key={board.id} className="flex items-start justify-between gap-3">
+                <span>
+                  {board.company ?? board.slug} <span className="text-muted">({board.ats}: {board.slug})</span>
+                  {board.last_error ? (
+                    <span className="block text-red-600">{board.last_error}</span>
+                  ) : (
+                    board.last_checked_at && <span className="block text-muted">Read {formatDate(board.last_checked_at)}</span>
+                  )}
+                </span>
+                <form action={removeCareerBoard}>
+                  <input type="hidden" name="id" value={board.id} />
+                  <button className="text-sm text-muted hover:text-red-600">Remove</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+        <SettingsForm action={addCareerBoard}>
+          <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+            <label className="field">
+              Job-board link
+              <input name="link" placeholder="https://jobs.lever.co/company" required />
+            </label>
+            <label className="field">
+              <span>Company name <span className="font-normal text-muted">(optional)</span></span>
+              <input name="company" />
             </label>
           </div>
         </SettingsForm>

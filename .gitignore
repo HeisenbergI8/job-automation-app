@@ -43,3 +43,7 @@ next-env.d.ts
 
 # provenly runtime state (the config at the root is tracked, this is not)
 .claude/.harness/
+
+# worker dependencies and run output (launchd stdout/stderr)
+/worker/node_modules/
+/worker/logs/

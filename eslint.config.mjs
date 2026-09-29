@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Plan reference reviews are annotated excerpts, not code.
+    ".claude/plans/**",
   ]),
 ]);
 

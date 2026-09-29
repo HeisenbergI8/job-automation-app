@@ -1,0 +1,18 @@
+// No DOM lib: the worker is Node. `paths` lets it import pure modules from src/lib (tested
+// 2026-09-29: tsx and tsc both resolve @/lib/tailoring/check through this).
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "paths": { "@/*": ["../src/*"] }
+  },
+  "include": ["src/**/*.ts"]
+}
