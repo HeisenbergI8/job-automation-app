@@ -84,6 +84,12 @@ describe("fetchBoard", () => {
     }
   });
 
+  it("doesn't warn when Ashby's page fails to load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (url.includes("api.ashbyhq.com") ? Response.json(ashby) : new Response("busy", { status: 503 }))));
+    const [job] = await fetchBoard({ ats: "ashby", slug: "ashby", company: "Ashby" });
+    expect(job.note).toBeUndefined();
+  });
+
   it("refuses an answer in an unexpected shape", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ error: "changed" })));
     await expect(fetchBoard({ ats: "greenhouse", slug: "gitlab", company: null })).rejects.toThrow("Unexpected answer");

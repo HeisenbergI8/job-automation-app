@@ -25,6 +25,15 @@ export const TOP = 3;
 /** Owner's rule (2026-09-29): only jobs scoring at least this are saved, so some days save fewer than TOP. */
 export const MIN_FIT = 50;
 
+/**
+ * Jobs to remember as reviewed, so later runs skip them: only those Claude scored below MIN_FIT. Good
+ * jobs that missed today's top TOP stay in the running, and a keyword-only score gets a Claude review
+ * on a later run.
+ */
+export function rejectedByClaude(ranked: Ranked[]) {
+  return ranked.filter((job) => job.scoredBy === "claude-code" && job.score < MIN_FIT);
+}
+
 /** The day's picks: the best jobs at or above MIN_FIT, at most TOP of them. `ranked` is best first. */
 export function pickTop(ranked: Ranked[]) {
   return ranked.filter((job) => job.score >= MIN_FIT).slice(0, TOP);
@@ -32,7 +41,10 @@ export function pickTop(ranked: Ranked[]) {
 
 const OPEN_TO_ALL = /\b(global|worldwide|anywhere|international)\b/i;
 
-/** Keyword rules from Settings. Score 0 means a dealbreaker: an excluded keyword or pay below the floor. */
+/**
+ * Keyword rules from Settings. Score 0 means a dealbreaker: an excluded keyword, pay below the floor,
+ * or an office job when the owner wants remote only.
+ */
 export function keywordFit(posting: Posting, criteria: Criteria): Fit {
   const text = `${posting.role}\n${posting.description}`;
   const excluded = criteria.excluded_keywords.find((keyword) => mentions(text, keyword));

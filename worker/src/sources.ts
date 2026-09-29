@@ -162,7 +162,8 @@ export async function fetchBoard(board: Board): Promise<Posting[]> {
 async function ashbyPagesOpen(slug: string) {
   try {
     const response = await fetch(`https://jobs.ashbyhq.com/${encodeURIComponent(slug)}`, { signal: AbortSignal.timeout(30_000) });
-    return (await response.text()).includes('"hostedJobsPageSlug"');
+    // Only a page that loaded fine and lacks the marker counts as switched off.
+    return !response.ok || (await response.text()).includes('"hostedJobsPageSlug"');
   } catch {
     return true;
   }

@@ -9,7 +9,7 @@ import type { TablesInsert } from "@/lib/supabase/types";
 import { createServiceClient } from "./db";
 import { dedupe } from "./dedupe";
 import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
-import { claudeCodeScorer, pickTop, rank, type Ranked } from "./scoring";
+import { claudeCodeScorer, pickTop, rank, rejectedByClaude, type Ranked } from "./scoring";
 import { searchJSearch, todaysSearches } from "./jsearch";
 import { fetchBoard, type Posting } from "./sources";
 
@@ -71,8 +71,10 @@ async function findJobs(errors: string[]) {
     if (error) throw error;
   }
 
-  // LinkedIn, Indeed, JobStreet and others through JSearch, when the owner has set up a key.
-  if (process.env.JSEARCH_API_KEY?.trim()) {
+  // LinkedIn, Indeed, JobStreet and others through JSearch, when the owner has set up a key. Dry runs
+  // skip it: the free plan is 200 searches a month, and test runs shouldn't use them up.
+  if (process.env.JSEARCH_API_KEY?.trim() && dryRun) console.log("Dry run: JSearch skipped to save your monthly searches.");
+  if (process.env.JSEARCH_API_KEY?.trim() && !dryRun) {
     for (const search of todaysSearches(settings.data)) {
       try {
         postings.push(...(await searchJSearch(search, settings.data.remote_preference === "remote")));
@@ -88,17 +90,18 @@ async function findJobs(errors: string[]) {
   const scorer = process.env.SCORER === "keywords" ? null : claudeCodeScorer(settings.data, parseMasterCv(settings.data.master_cv));
   const { ranked, errors: scoringErrors } = await rank(fresh, settings.data, scorer);
   errors.push(...scoringErrors);
-
-  // Remember what Claude scored (a keyword-only score is retried on a later run).
-  const reviewed = ranked.filter((job) => job.scoredBy === "claude-code");
-  if (!dryRun && reviewed.length) {
-    const { error } = await db.from("seen_postings").upsert(
-      reviewed.map(({ url, company, role, location, score }) => ({ url, company, role, location, score })),
-      { onConflict: "url", ignoreDuplicates: true },
-    );
-    if (error) throw error;
-  }
   return { fetched: postings.length, fresh: fresh.length, ranked };
+}
+
+/** Records the jobs Claude rejected (see `rejectedByClaude`), after the day's picks are saved. */
+async function rememberRejected(ranked: Ranked[]) {
+  const rejected = rejectedByClaude(ranked);
+  if (!rejected.length) return;
+  const { error } = await db.from("seen_postings").upsert(
+    rejected.map(({ url, company, role, location, score }) => ({ url, company, role, location, score })),
+    { onConflict: "url", ignoreDuplicates: true },
+  );
+  if (error) throw error;
 }
 
 async function notifyNeedsManual(until: string) {
@@ -146,6 +149,7 @@ async function main() {
         .upsert(top.map(toJob), { onConflict: "url", ignoreDuplicates: true });
       if (insertError) throw insertError;
     }
+    if (!dryRun) await rememberRejected(ranked);
 
     const notified = await send(batchMessage(top, errors, fresh));
     const until = new Date().toISOString();

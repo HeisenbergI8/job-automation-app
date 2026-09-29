@@ -102,7 +102,7 @@ The tester (report: `verification.md` in this folder) passed every behavioural p
 
 ## Owner setup follow-up — 2026-09-29
 
-While connecting the owner's bot (@johnross_jobs_bot), Node's `fetch` to api.telegram.org timed out on connect about 2 times in 3 (`UND_ERR_CONNECT_TIMEOUT`), while `curl` succeeded. `sendTelegram` now retries a failed connection up to 4 times (5s, then 10s, then 15s apart). An HTTP refusal from Telegram is not retried, and the error never includes the token. There are 3 new tests (62/62). `TELEGRAM_CHAT_ID` was saved to `worker/.env` from the owner's message, and the "connected" test message was delivered.
+While connecting the owner's bot (@johnross_jobs_bot), Node's `fetch` to api.telegram.org timed out on connect about 2 times in 3 (`UND_ERR_CONNECT_TIMEOUT`), while `curl` succeeded. `sendTelegram` now makes up to 4 tries in total when a connection fails (3 retries, waiting 5s, then 10s, then 15s). An HTTP refusal from Telegram is not retried, and the error never includes the token. There are 3 new tests (62/62). `TELEGRAM_CHAT_ID` was saved to `worker/.env` from the owner's message, and the "connected" test message was delivered.
 
 ## First live run and keyword-shortlist fix — 2026-09-29
 
@@ -121,5 +121,14 @@ The owner asked me to set up their profile and run it. From `JohnRossRivera-CV.p
 
 - **Repeats:** runs re-scored the same unsaved top 10 each time, because dedupe only skipped *saved* jobs (I had wrongly told the owner otherwise, and corrected it). There is a new `seen_postings` table (migration `20260929000200`; RLS read-only for the owner; 2 pgTAP checks, now 28/28). Every posting Claude scores is recorded there, and dedupe skips it on later runs. Keyword-only scores are not recorded, so they get retried.
 - **Hosted check:** I pushed the migration myself (additive only). Run 1 (Claude) recorded 10 jobs, scored 12–38. A keyword dry run straight after saw 2978 new instead of 2988, with different top picks.
-- **5.3:** LinkedIn, Indeed and JobStreet come through JSearch (`worker/src/jsearch.ts`), not scraping, because those sites' terms forbid automated access. The free plan is 200 requests a month with no card (confirmed on openwebninja.com/api/jsearch). A run makes at most `MAX_QUERIES` = 6 searches: target roles × listed countries, rotated daily, `work_from_home` when remote only, `date_posted=3days`. Monthly pay is scaled to yearly. `site` is set to linkedin, indeed, jobstreet or glassdoor for stage 6's hard block. If the free limit is used up or the key is refused, the error is reported and the remaining searches are skipped. There are 7 tests (71/71).
+- **5.3:** LinkedIn, Indeed and JobStreet come through JSearch (`worker/src/jsearch.ts`), not scraping, because those sites' terms forbid automated access. The free plan is 200 requests a month with no card (confirmed on openwebninja.com/api/jsearch). A run makes at most `MAX_QUERIES` = 6 searches: target roles × listed countries, rotated daily, `work_from_home` when remote only, `date_posted=3days`. Monthly pay is scaled to yearly. `site` is set to linkedin, indeed, jobstreet or glassdoor for stage 6's hard block. If the free limit is used up or the key is refused, the error is reported and the remaining searches are skipped. There are 6 tests (71/71).
 - **Not verified yet:** a live JSearch call. The owner has no key yet, and the test data is built from the documented field names (`data[]`, `job_apply_link`, `job_publisher`, …). Record a real response as a fixture on the first live run.
+
+## Review follow-up (auditor 68/100, tester PASS) — 2026-09-29
+
+- **Good jobs lost for good (medium):** every Claude-scored job used to go into `seen_postings`, so a 50+ job ranked 4th was never offered again, and the day's picks were marked seen before the `jobs` insert. Now `rejectedByClaude` (`scoring.ts`) keeps only Claude scores below `MIN_FIT`, and `run.ts` records them after the picks are saved. The 10 hosted rows all scored 12–38, so they already fit the rule.
+- **Dry runs spent JSearch quota:** dry runs now skip JSearch and print "Dry run: JSearch skipped to save your monthly searches."
+- **False "link won't open" notes:** `ashbyPagesOpen` now treats any non-OK page response as open. Only a page that loaded and lacks the marker counts as switched off.
+- **Other fixes:** the `keywordFit` docstring now lists the remote-only dealbreaker, and two counts in this log are corrected (4 tries in total; 6 JSearch tests).
+- **Gate:** `npm run verify` 73/73 (2 new tests). A local keyword run completed.
+- **Still open:** a live JSearch call and a real fixture, waiting on the owner's key. Stage 6 should block auto-apply with an allowlist of apply-link hosts (Greenhouse, Lever, Ashby), not only `site` names.

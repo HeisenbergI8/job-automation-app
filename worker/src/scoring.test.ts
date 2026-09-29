@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import claudeOutput from "../fixtures/claude-output.json";
-import { keywordFit, MIN_FIT, parseClaudeOutput, pickTop, rank, type Criteria, type Ranked } from "./scoring";
+import { keywordFit, MIN_FIT, parseClaudeOutput, pickTop, rank, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
 import type { Posting } from "./sources";
 
 const criteria: Criteria = {
@@ -114,6 +114,15 @@ describe("rank", () => {
     const { ranked } = await rank(jobs, criteria, null, 1);
     expect(ranked).toHaveLength(1);
     expect(ranked[0]).toMatchObject({ url: "a", score: 100, scoredBy: "keywords" });
+  });
+});
+
+describe("rejectedByClaude", () => {
+  const job = (url: string, score: number, scoredBy: Ranked["scoredBy"]) => ({ ...posting({ url }), score, reasons: [], scoredBy }) as Ranked;
+
+  it("remembers only jobs Claude scored below the minimum", () => {
+    const ranked = [job("good-but-4th", 70, "claude-code"), job("rejected", MIN_FIT - 1, "claude-code"), job("keyword-only", 10, "keywords")];
+    expect(rejectedByClaude(ranked).map((j) => j.url)).toEqual(["rejected"]);
   });
 });
 
