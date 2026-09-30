@@ -29,16 +29,16 @@ export function LoginForm() {
             type={showPassword ? "text" : "password"}
             required
             autoComplete="current-password"
-            className="pr-16"
+            className="pr-10"
           />
           <button
             type="button"
             onClick={() => setShowPassword((shown) => !shown)}
             aria-pressed={showPassword}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute inset-y-0 right-0 px-3 text-xs font-medium text-muted hover:text-foreground"
+            aria-label="Show password"
+            className="absolute inset-y-0 right-0 flex items-center px-3 text-muted hover:text-foreground"
           >
-            {showPassword ? "Hide" : "Show"}
+            <EyeIcon crossed={showPassword} />
           </button>
         </div>
       </label>
@@ -51,5 +51,26 @@ export function LoginForm() {
         {pending ? "Logging in…" : "Log in"}
       </button>
     </form>
+  );
+}
+
+/** An open eye while the password is hidden; crossed out once it is shown. */
+function EyeIcon({ crossed }: { crossed: boolean }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+      {crossed && <path d="m3 3 18 18" />}
+    </svg>
   );
 }
