@@ -5,6 +5,7 @@
   "scripts": {
     "start": "tsx --env-file=.env src/run.ts",
     "dry-run": "tsx --env-file=.env src/run.ts --dry-run",
+    "watch": "tsx --env-file=.env src/watch.ts",
     "dev": "tsx --env-file=.env.local src/run.ts",
     "schedule": "sh scripts/schedule.sh install",
     "unschedule": "sh scripts/schedule.sh uninstall"

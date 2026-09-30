@@ -21,6 +21,16 @@ const send = dryRun ? async (text: string) => (console.log(`[dry run; not sent]\
 // Supabase reports errors as plain `{ message, … }` objects, not `Error`s.
 // Counted as searches happen, so even a run that fails later records them (option A's daily check).
 let jsearchSearches = 0;
+// Set by watch.ts when the owner pressed "Find jobs now", so the app can follow this run.
+const requestId = process.env.FINDER_REQUEST_ID?.trim();
+let runId: string | undefined;
+
+/** Records what the run is doing now, for the live progress in the app. A failure here never stops the run. */
+async function stage(name: "career_pages" | "job_sites" | "onlinejobs" | "emails" | "scoring" | "saving" | null) {
+  if (!runId) return;
+  const { error } = await db.from("worker_runs").update({ stage: name }).eq("id", runId);
+  if (error) console.log(`Couldn't record the stage (${name}): ${error.message}`);
+}
 
 const message = (error: unknown) =>
   error instanceof Error
@@ -61,6 +71,7 @@ async function findJobs(errors: string[]) {
   if (!boards.data.length) errors.push("No company career pages in Settings yet.");
 
   const postings: Posting[] = [];
+  await stage("career_pages");
   for (const board of boards.data) {
     let lastError: string | null = null;
     try {
@@ -80,6 +91,7 @@ async function findJobs(errors: string[]) {
   // first run of the day only (owner's option A), so three daily runs fit the free 200 a month. Dry
   // runs skip it too.
   const fromCareerPages = postings.length;
+  await stage("job_sites");
   if (process.env.JSEARCH_API_KEY?.trim() && dryRun) console.log("Dry run: JSearch skipped to save your monthly searches.");
   else if (process.env.JSEARCH_API_KEY?.trim() && (await jsearchRanToday())) console.log("JSearch already ran today; career pages only.");
   else if (process.env.JSEARCH_API_KEY?.trim()) {
@@ -99,12 +111,14 @@ async function findJobs(errors: string[]) {
   const fromJSearch = postings.length - fromCareerPages;
 
   // OnlineJobs.ph: its public job search, one search per target role (its alert emails are read below too).
+  await stage("onlinejobs");
   const onlineJobs = await searchOnlineJobs(settings.data.target_roles, errors);
   postings.push(...onlineJobs);
 
   // The owner's own LinkedIn, JobStreet, Indeed and OnlineJobs.ph job-alert emails, when Gmail is set up. Each email
   // is read once; it's marked as read (processed_emails) after the day's picks are saved.
   let alertEmails: AlertEmail[] = [];
+  await stage("emails");
   if (process.env.GMAIL_ADDRESS?.trim() && process.env.GMAIL_APP_PASSWORD?.trim()) {
     const { data: done, error } = await db.from("processed_emails").select("message_id");
     if (error) throw error;
@@ -123,6 +137,7 @@ async function findJobs(errors: string[]) {
   const recent = recentOnly(postings);
   console.log(`${recent.length} of them were posted in the last ${NEW_WITHIN_DAYS} days.`);
   const fresh = dedupe(recent, [...saved.data, ...seen.data]);
+  await stage("scoring");
   const scorer = process.env.SCORER === "keywords" ? null : claudeCodeScorer(settings.data, parseMasterCv(settings.data.master_cv));
   const { ranked, errors: scoringErrors, unreviewedAlerts } = await rank(fresh, settings.data, scorer);
   const bySite = ranked.reduce<Record<string, number>>((count, job) => ((count[job.site] = (count[job.site] ?? 0) + 1), count), {});
@@ -192,12 +207,18 @@ async function main() {
     await send(`<b>The daily job finder couldn't start.</b>\n${message(error).replace(/[<>&]/g, "")}\nCheck worker/.env and worker/logs/finder.log.`).catch(() => {});
     throw error;
   }
+  runId = run.id;
+  if (requestId) {
+    const { error: linkError } = await db.from("finder_requests").update({ run_id: run.id }).eq("id", requestId);
+    if (linkError) console.log(`Couldn't link the run to its request: ${linkError.message}`);
+  }
   const errors: string[] = [];
 
   try {
     const { fetched, fresh, ranked, readEmails } = await findJobs(errors);
     // The day's 3 highest-scoring jobs (pickTop). A note goes first,
     // so it is the first thing the owner reads, in the app and on Telegram.
+    await stage("saving");
     const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
     if (!dryRun && top.length) {
       const { error: insertError } = await db
@@ -224,6 +245,7 @@ async function main() {
       .update({
         finished_at: until,
         ok: true,
+        stage: null,
         scorer,
         fetched,
         new_postings: fresh,
@@ -240,7 +262,7 @@ async function main() {
     errors.push(message(failure));
     await db
       .from("worker_runs")
-      .update({ finished_at: new Date().toISOString(), ok: false, errors, jsearch_searches: jsearchSearches })
+      .update({ finished_at: new Date().toISOString(), ok: false, stage: null, errors, jsearch_searches: jsearchSearches })
       .eq("id", run.id);
     await send(`<b>The daily job finder failed.</b>\n${message(failure).replace(/[<>&]/g, "")}`).catch(() => {});
     throw failure;

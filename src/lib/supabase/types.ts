@@ -49,6 +49,25 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"finder_requests": {
+                  Row: {
+                    "id": string,"picked_up_at": string | null,"requested_at": string,"run_id": string | null
+                  }
+                  Insert: {
+                    "id"?: string,"picked_up_at"?: string | null,"requested_at"?: string,"run_id"?: string | null
+                  }
+                  Update: {
+                    "id"?: string,"picked_up_at"?: string | null,"requested_at"?: string,"run_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "finder_requests_run_id_fkey"
+      columns: ["run_id"]
+isOneToOne: false
+      referencedRelation: "worker_runs"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"intro_adaptations": {
                   Row: {
                     "adapted_text": string,"created_at": string,"decided_at": string | null,"id": string,"job_id": string,"requirements": string,"status": Database["public"]['Enums']["intro_status"]
@@ -166,13 +185,13 @@ isOneToOne: false
                   ]
                 },"worker_runs": {
                   Row: {
-                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"id": string,"jsearch_searches": number,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"started_at": string
+                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"id": string,"jsearch_searches": number,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"stage": string | null,"started_at": string
                   }
                   Insert: {
-                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"stage"?: string | null,"started_at"?: string
                   }
                   Update: {
-                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"started_at"?: string
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"stage"?: string | null,"started_at"?: string
                   }
                   Relationships: [
                     

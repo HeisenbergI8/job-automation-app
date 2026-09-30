@@ -6,6 +6,8 @@ import { requireOwner } from "@/lib/supabase/server";
 import { LineChart } from "./analytics/charts";
 import { CompanyMark } from "./jobs/company-mark";
 import { StatusBadge } from "./jobs/status-badge";
+import { loadFinderState } from "./finder-state";
+import { FinderPanel } from "./finder-panel";
 import { HeroTile, StatTile } from "./stat-tile";
 
 const CHART_WEEKS = 8;
@@ -21,7 +23,7 @@ function SectionHeader({ title, href, linkLabel }: { title: string; href?: strin
 
 export default async function DashboardPage() {
   const supabase = await requireOwner();
-  const [{ data: jobs, error }, { data: events }, { data: settings }, { data: followUps }, { data: matches }] = await Promise.all([
+  const [{ data: jobs, error }, { data: events }, { data: settings }, { data: followUps }, { data: matches }, finder] = await Promise.all([
     supabase.from("jobs").select("id, status, site, apply_method, date_applied, salary_min, salary_max, salary_currency"),
     supabase
       .from("job_status_events")
@@ -40,6 +42,7 @@ export default async function DashboardPage() {
       .not("fit_score", "is", null)
       .order("fit_score", { ascending: false })
       .limit(3),
+    loadFinderState(supabase),
   ]);
   if (error) throw error;
 
@@ -53,10 +56,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Every application, at a glance.</p>
-      </div>
+      <FinderPanel initial={finder} />
 
       <section className="flex flex-col gap-3 lg:gap-4">
         <HeroTile
