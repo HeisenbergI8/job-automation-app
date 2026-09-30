@@ -3,11 +3,16 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { authCookieOptions, REMEMBER_COOKIE } from "./remember";
 import type { Database } from "./types";
 
-/** Acts as the signed-in owner, so row-level security applies. */
-export async function createClient() {
+/**
+ * Acts as the signed-in owner, so row-level security applies. `remember` overrides the stored
+ * "Remember me" choice, for the login action that is making that choice.
+ */
+export async function createClient({ remember }: { remember?: boolean } = {}) {
   const cookieStore = await cookies();
+  const keep = remember ?? cookieStore.get(REMEMBER_COOKIE)?.value !== "0";
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -17,7 +22,9 @@ export async function createClient() {
         setAll(cookiesToSet) {
           // Server components can't set cookies; the proxy refreshes the session instead.
           try {
-            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, authCookieOptions(keep, value, options)),
+            );
           } catch {}
         },
       },

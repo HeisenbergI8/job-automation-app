@@ -1,10 +1,11 @@
 "use client";
 
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { logIn } from "./actions";
 
 export function LoginForm() {
   const [error, formAction, pending] = useActionState(logIn, null);
+  const [showPassword, setShowPassword] = useState(false);
   return (
     <form
       // Submitting through a transition, rather than the action prop, stops React resetting the
@@ -22,7 +23,28 @@ export function LoginForm() {
       </label>
       <label className="field">
         Password
-        <input name="password" type="password" required autoComplete="current-password" />
+        <div className="relative flex flex-col">
+          <input
+            name="password"
+            type={showPassword ? "text" : "password"}
+            required
+            autoComplete="current-password"
+            className="pr-16"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((shown) => !shown)}
+            aria-pressed={showPassword}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute inset-y-0 right-0 px-3 text-xs font-medium text-muted hover:text-foreground"
+          >
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input name="remember" type="checkbox" defaultChecked />
+        Remember me
       </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button className="btn-primary" disabled={pending}>

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { authCookieOptions, REMEMBER_COOKIE } from "@/lib/supabase/remember";
 
 const PUBLIC_PATHS = ["/login", "/api/cron/"];
 
@@ -7,6 +8,7 @@ const PUBLIC_PATHS = ["/login", "/api/cron/"];
 // optimistic check; pages and server actions still verify the owner through requireOwner().
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const remember = request.cookies.get(REMEMBER_COOKIE)?.value !== "0";
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,7 +19,9 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, authCookieOptions(remember, value, options)),
+          );
         },
       },
     },
