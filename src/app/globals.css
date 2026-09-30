@@ -4,18 +4,19 @@
    so the toggle in the top bar can override the device. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Navy brand on an off-white page, with white cards lifted by a soft shadow and a dark sidebar.
+/* Harbor teal on a faintly teal off-white page, with white cards lifted by a soft shadow and a
+   dark sidebar.
    The token names predate this look; only their values changed. */
 :root {
-  --background: oklch(0.977 0.003 260);
-  --foreground: oklch(0.155 0.012 260);
+  --background: oklch(0.977 0.004 195);
+  --foreground: oklch(0.17 0.012 195);
   /* Cards are pure white on the off-white page: that one step is what makes them read as objects. */
   --surface: oklch(1 0 0);
-  --surface-muted: oklch(0.965 0.005 260);
-  --border: oklch(0.925 0.006 260);
-  --muted: oklch(0.545 0.018 260);
-  --accent: oklch(0.393 0.134 260.2);
-  --accent-strong: oklch(0.327 0.134 260.2);
+  --surface-muted: oklch(0.965 0.006 195);
+  --border: oklch(0.92 0.008 195);
+  --muted: oklch(0.53 0.02 195);
+  --accent: oklch(0.43 0.1 195);
+  --accent-strong: oklch(0.36 0.1 195);
   --accent-foreground: oklch(0.985 0 0);
   --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
   /* The fill behind white text (the hero tile, the logo square). Stays deep in dark mode, where
@@ -29,9 +30,9 @@
   --good-soft: color-mix(in oklab, var(--good) 12%, transparent);
 
   /* The sidebar is dark in both themes: navigation recedes, the cards beside it come forward. */
-  --sidebar: oklch(0.216 0.042 260);
-  --sidebar-foreground: oklch(0.93 0.012 260);
-  --sidebar-primary: oklch(0.535 0.15 260.2);
+  --sidebar: oklch(0.21 0.035 195);
+  --sidebar-foreground: oklch(0.93 0.012 195);
+  --sidebar-primary: oklch(0.56 0.1 195);
   --sidebar-accent: oklch(1 0 0 / 8%);
 
   /* Decorative tints for icon chips and name avatars. They never carry meaning. */
@@ -42,30 +43,30 @@
   --chip-amber: oklch(0.505 0.115 70);
 
   /* Wide, soft, brand-tinted shadows: a card at rest, under the pointer, and floating. */
-  --elevation-rest: 0 1px 2px -1px oklch(0.2 0.03 260 / 6%), 0 2px 8px -2px oklch(0.2 0.03 260 / 6%);
-  --elevation-hover: 0 2px 4px -2px oklch(0.2 0.03 260 / 8%), 0 8px 20px -4px oklch(0.2 0.03 260 / 10%);
-  --elevation-float: 0 8px 16px -6px oklch(0.2 0.03 260 / 12%), 0 20px 40px -12px oklch(0.2 0.03 260 / 16%);
+  --elevation-rest: 0 1px 2px -1px oklch(0.2 0.03 195 / 6%), 0 2px 8px -2px oklch(0.2 0.03 195 / 6%);
+  --elevation-hover: 0 2px 4px -2px oklch(0.2 0.03 195 / 8%), 0 8px 20px -4px oklch(0.2 0.03 195 / 10%);
+  --elevation-float: 0 8px 16px -6px oklch(0.2 0.03 195 / 12%), 0 20px 40px -12px oklch(0.2 0.03 195 / 16%);
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.162 0.016 260);
-  --foreground: oklch(0.975 0.004 260);
-  --surface: oklch(0.212 0.021 260);
-  --surface-muted: oklch(0.272 0.023 260);
+  --background: oklch(0.165 0.012 195);
+  --foreground: oklch(0.97 0.004 195);
+  --surface: oklch(0.215 0.015 195);
+  --surface-muted: oklch(0.27 0.018 195);
   --border: oklch(1 0 0 / 10%);
-  --muted: oklch(0.715 0.02 260);
-  --accent: oklch(0.672 0.13 260.2);
-  --accent-strong: oklch(0.755 0.11 260.2);
-  --accent-foreground: oklch(0.16 0.02 260);
+  --muted: oklch(0.72 0.02 195);
+  --accent: oklch(0.74 0.085 195);
+  --accent-strong: oklch(0.8 0.07 195);
+  --accent-foreground: oklch(0.17 0.02 195);
   --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
-  --hero: oklch(0.4 0.13 262);
+  --hero: oklch(0.42 0.1 195);
   --danger: oklch(0.704 0.191 22.216);
   --warn: oklch(0.82 0.12 75);
   --warn-soft: color-mix(in oklab, oklch(0.8 0.15 80) 14%, transparent);
   --good: oklch(0.75 0.15 150);
 
-  --sidebar: oklch(0.178 0.032 260);
+  --sidebar: oklch(0.18 0.03 195);
   --sidebar-primary: var(--accent);
 
   --chip-indigo: oklch(0.74 0.13 276.3);
@@ -110,7 +111,7 @@
   --shadow-rest: var(--elevation-rest);
   --shadow-hover: var(--elevation-hover);
   --shadow-float: var(--elevation-float);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -131,6 +132,28 @@ body {
   }
   .dark select {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3adbb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  /* The loader: three listing rows that shrink and spring back in turn, like a scan down a job
+     board. Each falls faster than it returns, and the next starts before the last settles, so the
+     mark is never still. */
+  @keyframes scan-row {
+    0% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+    30% {
+      transform: scaleX(0.28);
+      opacity: 0.45;
+    }
+    62% {
+      transform: scaleX(1.04);
+      opacity: 1;
+    }
+    78%,
+    100% {
+      transform: scaleX(1);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
