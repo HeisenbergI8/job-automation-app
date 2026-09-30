@@ -7,6 +7,7 @@ import { requireOwner } from "@/lib/supabase/server";
 import { keywordScore } from "@/lib/tailoring/ats";
 import { CompanyMark } from "../company-mark";
 import { StatusBadge } from "../status-badge";
+import { DeleteJob } from "./delete-job";
 import { StatusControl } from "./status-control";
 import { IntroAdaptation, NewIntroForm, TailorButton } from "./tailoring-panels";
 import { UploadForm } from "./upload-form";
@@ -183,6 +184,8 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
               <p className="text-sm text-muted">No description saved.</p>
             )}
           </section>
+
+          <DeleteJob jobId={job.id} company={job.company} />
         </div>
 
         <div className="order-first flex flex-col gap-6 lg:order-none">

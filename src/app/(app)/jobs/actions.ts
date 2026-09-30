@@ -27,6 +27,29 @@ export async function changeStatus(jobId: string, _prev: FormState, formData: Fo
   return null;
 }
 
+/**
+ * Deletes a job for good. Its status history, document records and intro adaptations go with it
+ * (on delete cascade); the uploaded files are removed from Storage first, since nothing cascades
+ * there. The finder remembers every posting it scored in seen_postings, so it won't add it again.
+ */
+export async function deleteJob(jobId: string): Promise<FormState> {
+  const supabase = await requireOwner();
+
+  // Read first and stop on failure: once the job is gone, so are the paths of its files.
+  const { data: documents, error: documentsError } = await supabase.from("application_documents").select("storage_path").eq("job_id", jobId);
+  if (documentsError) return { error: documentsError.message };
+  if (documents.length) {
+    const { error } = await supabase.storage.from("documents").remove(documents.map((doc) => doc.storage_path));
+    if (error) return { error: `The job's files couldn't be removed: ${error.message}` };
+  }
+
+  const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/", "layout");
+  redirect("/jobs");
+}
+
 function optionalNumber(value: FormDataEntryValue | null) {
   const text = String(value ?? "").trim().replace(/,/g, "");
   return text ? Number(text) : null;
