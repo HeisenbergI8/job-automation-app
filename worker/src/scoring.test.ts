@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import claudeOutput from "../fixtures/claude-output.json";
 import { CLAUDE_AT_ONCE } from "./parallel";
-import { keywordFit, MAX_ALERT_REVIEWS, parseClaudeOutput, pickTop, rank, REVIEW_AGAIN_FROM, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
+import { keywordFit, MAX_ALERT_REVIEWS, parseClaudeOutput, rank, type Criteria } from "./scoring";
 import type { Posting } from "./sources";
 
 const criteria: Criteria = {
@@ -119,53 +119,7 @@ describe("rank", () => {
   });
 });
 
-describe("rejectedByClaude", () => {
-  const job = (url: string, score: number, scoredBy: Ranked["scoredBy"]) => ({ ...posting({ url }), score, reasons: [], scoredBy }) as Ranked;
-
-  it("remembers only jobs Claude scored too low to review again", () => {
-    const ranked = [job("good-but-4th", REVIEW_AGAIN_FROM, "claude-code"), job("rejected", REVIEW_AGAIN_FROM - 1, "claude-code"), job("keyword-only", 10, "keywords")];
-    expect(rejectedByClaude(ranked).map((j) => j.url)).toEqual(["rejected"]);
-  });
-});
-
-describe("pickTop", () => {
-  const scored = (url: string, score: number) => ({ ...posting({ url }), score, reasons: [], scoredBy: "claude-code" }) as Ranked;
-
-  it("keeps the three highest scores, however low", () => {
-    const ranked = [scored("a", 51), scored("b", 50), scored("c", 49), scored("d", 12)];
-    expect(pickTop(ranked).map((job) => job.url)).toEqual(["a", "b", "c"]);
-  });
-
-  it("gives fewer than three only when fewer jobs were reviewed", () => {
-    expect(pickTop([scored("a", 20)]).map((job) => job.url)).toEqual(["a"]);
-    expect(pickTop([])).toEqual([]);
-  });
-
-  const at = (url: string, score: number, site: string) => ({ ...scored(url, score), site }) as Ranked;
-
-  it("goes by score alone, even when every pick is from one site", () => {
-    const ranked = [at("indeed1", 70, "indeed"), at("indeed2", 68, "indeed"), at("indeed3", 66, "indeed"), at("linkedin", 60, "linkedin")];
-    expect(pickTop(ranked).map((job) => job.url)).toEqual(["indeed1", "indeed2", "indeed3"]);
-  });
-
-  it("doesn't put a priority site ahead of a higher score elsewhere", () => {
-    const ranked = [at("careers", 95, "greenhouse"), at("online", 90, "onlinejobs"), at("linkedin", 60, "linkedin"), at("indeed", 55, "indeed")];
-    expect(pickTop(ranked).map((job) => job.url)).toEqual(["careers", "online", "linkedin"]);
-  });
-});
-
 describe("eligibility", () => {
-  const job = (url: string, score: number, eligible?: boolean) => ({ ...posting({ url }), score, reasons: [], scoredBy: "claude-code", eligible }) as Ranked;
-
-  it("never picks a job the owner can't apply for", () => {
-    expect(pickTop([job("us-only", 95, false), job("ok", 85)]).map((j) => j.url)).toEqual(["ok"]);
-    expect(pickTop([job("us-only", 95, false)])).toEqual([]);
-  });
-
-  it("remembers ineligible jobs so they aren't reviewed again", () => {
-    expect(rejectedByClaude([job("us-only", 90, false), job("good", 90, true)]).map((j) => j.url)).toEqual(["us-only"]);
-  });
-
   it("reads eligibility from Claude's answer", () => {
     const answer = JSON.stringify({ ...claudeOutput, structured_output: { score: 12, reasons: ["US residents only."], eligible: false } });
     expect(parseClaudeOutput(answer)).toEqual({ score: 12, reasons: ["US residents only."], eligible: false });

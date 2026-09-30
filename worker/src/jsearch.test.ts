@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import jsearch from "../fixtures/jsearch.json";
-import { MAX_QUERIES, parseJSearch, searchJSearch, todaysSearches } from "./jsearch";
+import { findSamePosting, lookUpPosting, MAX_QUERIES, parseJSearch, sameCompany, searchJSearch, titleOverlap, todaysSearches } from "./jsearch";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -96,5 +96,49 @@ describe("searchJSearch", () => {
     vi.stubEnv("JSEARCH_API_KEY", "test-key-EXAMPLE");
     vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 429 })));
     await expect(searchJSearch({ role: "x", country: "ph" }, true)).rejects.toThrow("free monthly limit is used up");
+  });
+});
+
+describe("finding a Gmail job on JSearch", () => {
+  it("treats company names that differ only by suffix or punctuation as the same", () => {
+    expect(sameCompany("White Cloak Technologies, Inc.", "White Cloak Technologies")).toBe(true);
+    expect(sameCompany("MedVirtual", "Medvirtual LLC")).toBe(true);
+    expect(sameCompany("Acme", "Globex")).toBe(false);
+  });
+
+  it("measures how much of the shorter title the other shares", () => {
+    expect(titleOverlap("AI Agent Developer", "AI Agent Developer (Remote)")).toBe(1);
+    expect(titleOverlap("Frontend Engineer", "Backend Engineer")).toBe(0.5);
+  });
+
+  it("picks the same company's closest title, and nothing when unsure", () => {
+    const results = parseJSearch(jsearch);
+    const target = results[0];
+    expect(findSamePosting({ company: `${target.company} Inc.`, role: target.role }, results)).toBe(target);
+    expect(findSamePosting({ company: target.company, role: "Head of Sales" }, results)).toBeNull();
+    expect(findSamePosting({ company: "Someone Else", role: target.role }, results)).toBeNull();
+  });
+
+  it("doesn't mix up seniority levels or match a vague title", () => {
+    const at = (role: string) => ({ ...parseJSearch(jsearch)[0], company: "Acme", role });
+    expect(findSamePosting({ company: "Acme", role: "Junior Frontend Developer" }, [at("Senior Frontend Developer")])).toBeNull();
+    expect(findSamePosting({ company: "Acme", role: "Frontend Developer" }, [at("Lead Frontend Developer")])).toBeNull();
+    expect(findSamePosting({ company: "Acme", role: "Sr. Frontend Developer" }, [at("Senior Frontend Developer")])?.role).toBe("Senior Frontend Developer");
+    expect(findSamePosting({ company: "Acme", role: "Engineer" }, [at("Software Engineer")])).toBeNull();
+    // Most of the short title, but under half of a much longer one: a different job.
+    expect(findSamePosting({ company: "Acme", role: "Data Engineer" }, [at("Data Platform Reliability Operations Engineer")])).toBeNull();
+  });
+
+  it("looks up by title and company, in the job's country, from the past week", async () => {
+    vi.stubEnv("JSEARCH_API_KEY", "test-key-EXAMPLE");
+    const fetch = vi.fn(async () => Response.json(jsearch));
+    vi.stubGlobal("fetch", fetch);
+    const [first] = parseJSearch(jsearch);
+    const found = await lookUpPosting({ company: first.company, role: first.role, location: "Makati, Philippines" }, []);
+    const [url] = fetch.mock.calls[0] as unknown as [string];
+    expect(url).toContain(`query=${encodeURIComponent(`${first.role} ${first.company}`).replace(/%20/g, "+")}`);
+    expect(url).toContain("country=ph");
+    expect(url).toContain("date_posted=week");
+    expect(found?.description).toBe(first.description);
   });
 });

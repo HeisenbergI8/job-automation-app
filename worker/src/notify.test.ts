@@ -41,14 +41,14 @@ describe("batchMessage", () => {
     expect(text).toContain(`${"x".repeat(139)}…`);
   });
 
-  it("says plainly when there were fewer than three new jobs", () => {
-    expect(batchMessage([job], [], 1)).toContain("<b>Only 1 new job today</b>");
-    expect(batchMessage([job, job], [], 2)).toContain("<b>Only 2 new jobs today</b>");
+  it("says plainly when fewer than three jobs passed the check", () => {
+    expect(batchMessage([job], [], 1)).toContain("<b>Only 1 job passed today's check</b>");
+    expect(batchMessage([job, job], [], 2)).toContain("<b>Only 2 jobs passed today's check</b>");
   });
 
-  it("says so when there were no new jobs, and lists problems", () => {
+  it("says so when no job passed, and lists problems", () => {
     const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 0);
-    expect(text).toContain("No new jobs today (0 checked).");
+    expect(text).toContain("No jobs passed today's check (0 new checked).");
     expect(text).toContain("<b>Problems</b>\n• acme (lever): Board not found.");
   });
 });

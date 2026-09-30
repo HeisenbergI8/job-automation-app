@@ -18,6 +18,7 @@ export const STAGES = [
   { id: "onlinejobs", label: "Searching OnlineJobs.ph" },
   { id: "emails", label: "Reading your job-alert emails" },
   { id: "scoring", label: "Scoring new jobs against your CV" },
+  { id: "checking", label: "Checking the best against their full postings" },
   { id: "saving", label: "Saving the best matches" },
 ] as const;
 

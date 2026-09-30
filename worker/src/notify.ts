@@ -20,12 +20,13 @@ const FIT_LENGTH = 140;
  * one line on why it fits. Fewer than TOP only when fewer new jobs than that were reviewed.
  */
 export function batchMessage(saved: Ranked[], problems: string[], checked: number) {
+  // Every job sent passed the full-posting check (verify.ts), so fewer than TOP means fewer passed.
   const heading =
     saved.length >= TOP
       ? `<b>Today's top ${TOP} jobs</b>`
       : saved.length
-        ? `<b>Only ${saved.length} new ${saved.length === 1 ? "job" : "jobs"} today</b>`
-        : `<b>No new jobs today (${checked} checked).</b>`;
+        ? `<b>Only ${saved.length} ${saved.length === 1 ? "job" : "jobs"} passed today's check</b>`
+        : `<b>No jobs passed today's check (${checked} new checked).</b>`;
   const lines = [heading];
   saved.forEach((job, index) => {
     const salary = formatSalary(job);
