@@ -185,3 +185,11 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **The fixture edits (auditor's "hand-edited" note):** the JSearch `job_posted_at_datetime_utc` values were copied by apply link from the recorded raw answer, and JSearch really returns midnight timestamps. `parameters.num_pages` is JSearch's own echo of its default. The Lever `createdAt` and Ashby `publishedAt` values are the live values seen on 2026-09-29, added to the older fixtures.
 - **Still open:** the Gmail search matches any email from those domains, not only alerts. I'll narrow it to the exact alert senders once the owner's first real alert emails show them.
 - **Gate:** `npm run verify` 93/93.
+
+## OnlineJobs.ph — 2026-09-30
+
+- The owner added OnlineJobs.ph. It now ranks fourth after LinkedIn, JobStreet and Indeed. Its alert emails are read (`onlinejobs.ph` sender), and its job links are canonicalised.
+- **Direct reader (`worker/src/onlinejobs.ts`):** robots.txt allows the public job search with `Crawl-delay: 5`, and llms.txt lists "Job search (Jobseekers)" as a main page; I did not check their Terms of Service. The reader makes one search per target role (at most 5), 5 seconds apart. It parses title, company (from the logo alt; "Employer on OnlineJobs.ph" when there's no logo), UTC posting time (`data-temp-2`), pay (monthly converted to yearly; hourly left out), description and link. A job's pieces between repeated links (title and "See More") are joined back together. The fixture is a trimmed real page (recorded 2026-09-30).
+- **Live check:** 5 searches in 24s, 137 jobs, 45 from the last 7 days, no errors.
+- The owner also found **Account → Job Alerts** on OnlineJobs.ph, so both sources apply; duplicates are removed by canonical URL.
+- **Gate:** `npm run verify` 97/97.

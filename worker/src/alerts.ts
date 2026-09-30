@@ -28,6 +28,8 @@ export function canonicalJobUrl(url: string) {
     const parsed = new URL(url);
     const jobstreet = parsed.pathname.match(/\/job\/(\d+)/);
     if (/jobstreet/i.test(parsed.hostname) && jobstreet) return `${parsed.origin}/job/${jobstreet[1]}`;
+    const onlinejobs = parsed.pathname.match(/\/jobseekers\/job\/([\w-]+-\d+)/);
+    if (/onlinejobs\.ph/i.test(parsed.hostname) && onlinejobs) return `https://www.onlinejobs.ph/jobseekers/job/${onlinejobs[1]}`;
     const jk = parsed.searchParams.get("jk");
     if (/indeed\./i.test(parsed.hostname) && jk) return `${parsed.origin}/viewjob?jk=${jk}`;
   } catch {

@@ -7,6 +7,7 @@ describe("canonicalJobUrl", () => {
     expect(canonicalJobUrl("https://ph.linkedin.com/jobs/view/software-engineer-at-acme-4012345678?trk=x")).toBe("https://www.linkedin.com/jobs/view/4012345678/");
     expect(canonicalJobUrl("https://ph.jobstreet.com/job/81234567?type=alert&ref=email")).toBe("https://ph.jobstreet.com/job/81234567");
     expect(canonicalJobUrl("https://ph.indeed.com/rc/clk?jk=a1b2c3d4e5&from=ja&tk=x")).toBe("https://ph.indeed.com/viewjob?jk=a1b2c3d4e5");
+    expect(canonicalJobUrl("https://v2.onlinejobs.ph/jobseekers/job/ai-engineer-1738202?utm_source=alert")).toBe("https://www.onlinejobs.ph/jobseekers/job/ai-engineer-1738202");
     expect(canonicalJobUrl("https://example.com/careers/1?x=1")).toBe("https://example.com/careers/1?x=1");
   });
 });

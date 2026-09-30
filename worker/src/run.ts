@@ -12,6 +12,7 @@ import { dedupe, NEW_WITHIN_DAYS, recentOnly } from "./dedupe";
 import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
 import { claudeCodeScorer, pickTop, rank, rejectedByClaude, type Ranked } from "./scoring";
 import { searchJSearch, todaysSearches } from "./jsearch";
+import { searchOnlineJobs } from "./onlinejobs";
 import { fetchBoard, type Posting } from "./sources";
 
 const dryRun = process.argv.includes("--dry-run");
@@ -97,6 +98,10 @@ async function findJobs(errors: string[]) {
 
   const fromJSearch = postings.length - fromCareerPages;
 
+  // OnlineJobs.ph: its public job search, one search per target role (it sends no alert emails).
+  const onlineJobs = await searchOnlineJobs(settings.data.target_roles, errors);
+  postings.push(...onlineJobs);
+
   // The owner's own LinkedIn, JobStreet and Indeed job-alert emails, when Gmail is set up. Each email
   // is read once; it's marked as read (processed_emails) after the day's picks are saved.
   let alertEmails: AlertEmail[] = [];
@@ -111,7 +116,7 @@ async function findJobs(errors: string[]) {
     }
   }
   console.log(
-    `Read ${fromCareerPages} from career pages, ${fromJSearch} from JSearch and ${postings.length - fromCareerPages - fromJSearch} from ${alertEmails.length} new job-alert emails.`,
+    `Read ${fromCareerPages} from career pages, ${fromJSearch} from JSearch, ${onlineJobs.length} from OnlineJobs.ph and ${postings.length - fromCareerPages - fromJSearch - onlineJobs.length} from ${alertEmails.length} new job-alert emails.`,
   );
 
   // Only jobs posted in the last week, minus saved jobs and jobs Claude already scored.
