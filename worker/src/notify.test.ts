@@ -25,29 +25,29 @@ afterEach(() => {
 });
 
 describe("batchMessage", () => {
-  it("lists each pick with its score, link and top two reasons, escaped for Telegram HTML", () => {
-    const text = batchMessage([job, job, job], [], 12);
+  it("lists each pick with site, salary, score, link and one fit reason, escaped for Telegram HTML", () => {
+    const text = batchMessage([{ ...job, role: "R&D <Engineer>" }, job, job], [], 12);
     expect(text).toContain("<b>Today's top 3 jobs</b>");
-    expect(text).toContain("Not applied yet: open each link and apply, then mark it Applied in the app.");
-    expect(text).toContain('1. <a href="https://jobs.lever.co/acme/1">Frontend Engineer</a> at R&amp;D &lt;Labs&gt;');
-    expect(text).toContain("Fit 86/100 · company careers page ·");
-    expect(text).toContain("• Has 2 of 2 must-have keywords.");
-    expect(text).not.toContain("• Remote.");
+    expect(text).toContain('1. <a href="https://jobs.lever.co/acme/1">R&amp;D &lt;Engineer&gt;</a>\n');
+    expect(text).toContain("company careers page · USD 120K–150K · <b>86/100</b>\nTitle matches.");
+    expect(text).not.toContain("Labs");
+    expect(text).not.toContain("Has 2 of 2");
+    expect(text).not.toContain("Not applied yet");
+  });
+
+  it("says when no salary is stated and shortens a long reason", () => {
+    const text = batchMessage([{ ...job, salary_min: null, salary_max: null, reasons: ["x".repeat(300)] }], [], 5);
+    expect(text).toContain("· Salary not stated ·");
+    expect(text).toContain(`${"x".repeat(139)}…`);
   });
 
   it("says plainly when fewer than three jobs reached the minimum score", () => {
-    expect(batchMessage([job], [], 12)).toContain("<b>Only 1 of today's 12 new jobs scored 50 or more</b>");
+    expect(batchMessage([job], [], 12)).toContain("<b>1 of today's 12 new jobs scored 80+</b>");
   });
 
-  it("labels the closest match when nothing reached the minimum score", () => {
-    const text = batchMessage([{ ...job, site: "linkedin", score: 42 }], [], 40);
-    expect(text).toContain("No new job scored 50 or more today. Here's the closest of 40:");
-    expect(text).toContain("Fit 42/100 · LinkedIn ·");
-  });
-
-  it("says so when there are no new jobs at all, and lists problems", () => {
-    const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 0);
-    expect(text).toContain("No new jobs today (0 checked).");
+  it("says so when nothing reached the minimum score, and lists problems", () => {
+    const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 40);
+    expect(text).toContain("No new job scored 80+ today (40 checked).");
     expect(text).toContain("<b>Problems</b>\n• acme (lever): Board not found.");
   });
 });

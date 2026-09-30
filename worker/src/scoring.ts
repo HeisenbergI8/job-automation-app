@@ -23,8 +23,11 @@ export type Ranked = Posting & Fit & { scoredBy: "claude-code" | "keywords" };
 
 /** Jobs saved per day, at most. */
 export const TOP = 3;
-/** Owner's rule (2026-09-29): only jobs scoring at least this are saved, so some days save fewer than TOP. */
-export const MIN_FIT = 50;
+/**
+ * Owner's rule: only jobs scoring at least this are saved, so some days save fewer than TOP, or none.
+ * Raised from 50 to 80 on 2026-09-30, with enough sources to be picky.
+ */
+export const MIN_FIT = 80;
 
 /**
  * Jobs to remember as reviewed, so later runs skip them: only those Claude scored below MIN_FIT. Good
@@ -41,20 +44,12 @@ export const PRIORITY_SITES = ["linkedin", "jobstreet", "indeed", "onlinejobs"];
 /**
  * The day's picks from `ranked` (best first), at most TOP:
  * 1. the best LinkedIn, JobStreet, Indeed and OnlineJobs.ph jobs scoring MIN_FIT or more, in that order;
- * 2. then the best from other sites, one per site first, so the picks come from several sites;
- * 3. if nothing reaches MIN_FIT, the single closest match, labelled as below the bar, so the owner
- *    still gets a job every day (owner, 2026-09-29).
+ * 2. then the best from other sites, one per site first, so the picks come from several sites.
+ * Nothing below MIN_FIT is ever picked (owner, 2026-09-30: the closest-match fallback was dropped).
  */
 export function pickTop(ranked: Ranked[]): Ranked[] {
-  // A job the owner can't apply for from where they live is never picked, not even as the closest match.
-  const open = ranked.filter((job) => job.eligible !== false);
-  const good = open.filter((job) => job.score >= MIN_FIT);
-  if (!good.length) {
-    // Only a job Claude checked for eligibility can be sent as the closest match.
-    const best = open.find((job) => job.scoredBy === "claude-code");
-    if (!best) return [];
-    return [{ ...best, reasons: [`Closest match today: it scored ${best.score}, below your usual ${MIN_FIT}.`, ...best.reasons] }];
-  }
+  // A job the owner can't apply for from where they live is never picked.
+  const good = ranked.filter((job) => job.eligible !== false && job.score >= MIN_FIT);
   const picks: Ranked[] = [];
   const take = (job: Ranked | undefined) => {
     if (job && picks.length < TOP && !picks.includes(job)) picks.push(job);

@@ -196,7 +196,7 @@ async function main() {
 
   try {
     const { fetched, fresh, ranked, readEmails } = await findJobs(errors);
-    // Up to 3 jobs scoring MIN_FIT or more, or the single closest checked match (pickTop). A note goes first,
+    // Up to 3 jobs scoring MIN_FIT or more, picked by pickTop. A note goes first,
     // so it is the first thing the owner reads, in the app and on Telegram.
     const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
     if (!dryRun && top.length) {
