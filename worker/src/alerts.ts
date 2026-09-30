@@ -6,6 +6,7 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { z } from "zod";
+import { CLAUDE_AT_ONCE, inParallel } from "./parallel";
 import { askClaudeCode, structuredOutput } from "./scoring";
 import { htmlToText, NOT_REMOTE, type Posting } from "./sources";
 
@@ -154,7 +155,8 @@ export async function readJobAlerts(processed: Set<string>, errors: string[], no
     logger: false,
   });
   await client.connect();
-  const emails: AlertEmail[] = [];
+  // Read the mailbox first, then ask Claude about the emails CLAUDE_AT_ONCE at a time.
+  const found: { messageId: string; sender: (typeof ALERT_SENDERS)[number]; subject: string; text: string; links: string[]; date: Date }[] = [];
   const lock = await client.getMailboxLock("INBOX", { readOnly: true });
   try {
     const since = new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000);
@@ -164,22 +166,33 @@ export async function readJobAlerts(processed: Set<string>, errors: string[], no
       ).flat();
       if (!uids.length) continue;
       for (const message of await client.fetchAll(uids, { source: true }, { uid: true })) {
-        if (!message.source || emails.length >= MAX_ALERT_EMAILS) continue;
+        if (!message.source || found.length >= MAX_ALERT_EMAILS) continue;
         const mail = await simpleParser(message.source);
         const messageId = mail.messageId ?? `${sender.site}-${message.uid}`;
         if (processed.has(messageId) || !isJobAlert(mail.subject ?? "")) continue;
-        const links = emailLinks(typeof mail.html === "string" ? mail.html : "");
-        try {
-          const jobs = await extractJobs(mail.subject ?? "", mail.text ?? htmlToText(String(mail.html ?? "")), links);
-          emails.push({ messageId, site: sender.site, postings: toPostings(jobs, links, sender.site, sender.name, mail.date ?? now) });
-        } catch (error) {
-          errors.push(`Couldn't read a ${sender.name} alert ("${mail.subject ?? ""}"): ${(error as Error).message}`);
-        }
+        found.push({
+          messageId,
+          sender,
+          subject: mail.subject ?? "",
+          text: mail.text ?? htmlToText(String(mail.html ?? "")),
+          links: emailLinks(typeof mail.html === "string" ? mail.html : ""),
+          date: mail.date ?? now,
+        });
       }
     }
   } finally {
     lock.release();
     await client.logout();
   }
-  return emails;
+
+  const emails = await inParallel(found, CLAUDE_AT_ONCE, async ({ messageId, sender, subject, text, links, date }): Promise<AlertEmail | null> => {
+    try {
+      const jobs = await extractJobs(subject, text, links);
+      return { messageId, site: sender.site, postings: toPostings(jobs, links, sender.site, sender.name, date) };
+    } catch (error) {
+      errors.push(`Couldn't read a ${sender.name} alert ("${subject}"): ${(error as Error).message}`);
+      return null;
+    }
+  });
+  return emails.filter((email) => email !== null);
 }

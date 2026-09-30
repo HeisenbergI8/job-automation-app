@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import claudeOutput from "../fixtures/claude-output.json";
+import { CLAUDE_AT_ONCE } from "./parallel";
 import { keywordFit, MAX_ALERT_REVIEWS, parseClaudeOutput, pickTop, rank, REVIEW_AGAIN_FROM, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
 import type { Posting } from "./sources";
 
@@ -100,14 +101,15 @@ describe("rank", () => {
     expect(errors).toEqual([]);
   });
 
-  it("falls back to keyword scores after two failures in a row", async () => {
+  it("stops asking the scorer after two failures in a row, once the calls already started finish", async () => {
     const scorer = vi.fn(async () => {
       throw new Error("usage limit reached");
     });
-    const { ranked, errors } = await rank([...jobs, posting({ url: "d" })], criteria, scorer);
-    expect(scorer).toHaveBeenCalledTimes(2);
+    const many = Array.from({ length: CLAUDE_AT_ONCE + 3 }, (_, i) => posting({ url: `job-${i}` }));
+    const { ranked, errors } = await rank(many, criteria, scorer);
+    expect(scorer).toHaveBeenCalledTimes(CLAUDE_AT_ONCE);
     expect(ranked.every((job) => job.scoredBy === "keywords" && job.reasons.includes("Keyword score only."))).toBe(true);
-    expect(errors).toHaveLength(2);
+    expect(errors).toHaveLength(CLAUDE_AT_ONCE);
   });
 
   it("uses keyword scores only when there is no scorer", async () => {

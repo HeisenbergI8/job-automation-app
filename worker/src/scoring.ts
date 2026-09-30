@@ -9,6 +9,7 @@ import { cvText, type MasterCv } from "@/lib/master-cv";
 import type { Tables } from "@/lib/supabase/types";
 import { keywordScore } from "@/lib/tailoring/ats";
 import { mentions } from "@/lib/tailoring/text";
+import { CLAUDE_AT_ONCE, inParallel } from "./parallel";
 import type { Posting } from "./sources";
 
 export type Criteria = Pick<
@@ -126,8 +127,9 @@ export function keywordFit(posting: Posting, criteria: Criteria): Fit {
 
 /**
  * Keyword-scores every posting, drops dealbreakers, asks `scorer` about the best `shortlist` and
- * returns them best first. After two failures in a row the scorer isn't asked again this run; those
- * jobs keep their keyword score and say so.
+ * returns them best first. CLAUDE_AT_ONCE jobs are scored at a time. After two failures in a row the
+ * scorer isn't asked again this run (calls already started still finish); those jobs keep their
+ * keyword score and say so.
  */
 /** At most this many jobs from the owner's alert emails are reviewed per run; the rest wait (see run.ts). */
 export const MAX_ALERT_REVIEWS = 20;
@@ -150,22 +152,21 @@ export async function rank(postings: Posting[], criteria: Criteria, scorer: Scor
   // Alert jobs past the cap weren't reviewed: their email is kept for the next run (run.ts).
   const unreviewedAlerts = alerts.filter((job) => !candidates.has(job));
 
-  const ranked: Ranked[] = [];
   const errors: string[] = [];
   let failures = 0;
-  for (const job of candidates) {
+  const ranked = await inParallel([...candidates], CLAUDE_AT_ONCE, async (job): Promise<Ranked> => {
     if (scorer && failures < 2) {
       try {
-        ranked.push({ ...job, ...(await scorer(job)), scoredBy: "claude-code" });
+        const fit = await scorer(job);
         failures = 0;
-        continue;
+        return { ...job, ...fit, scoredBy: "claude-code" };
       } catch (error) {
         failures += 1;
         errors.push(`Couldn't score "${job.role}" at ${job.company} with Claude: ${(error as Error).message}`);
       }
     }
-    ranked.push({ ...job, reasons: [...job.reasons, "Keyword score only."], scoredBy: "keywords" });
-  }
+    return { ...job, reasons: [...job.reasons, "Keyword score only."], scoredBy: "keywords" };
+  });
   return { ranked: ranked.sort((a, b) => b.score - a.score), errors, unreviewedAlerts };
 }
 
