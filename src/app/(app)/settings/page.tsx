@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { LucideIcon } from "lucide-react";
 import { BellRing, Building2, FileUser, MicVocal, Presentation, SlidersHorizontal, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/jobs";
 import { EMPTY_CV, parseMasterCv } from "@/lib/master-cv";
@@ -9,15 +8,8 @@ import { addCareerBoard, removeCareerBoard, saveCriteria, saveFollowUp, saveMast
 import { CvEditor } from "./cv-editor";
 import { IntroField } from "./intro-field";
 import { SettingsForm } from "./settings-form";
+import { SettingsTabs } from "./settings-tabs";
 import { TagInput } from "./tag-input";
-
-const SECTIONS = [
-  { id: "criteria", label: "Job search", icon: SlidersHorizontal },
-  { id: "career-pages", label: "Career pages", icon: Building2 },
-  { id: "follow-up", label: "Follow-up", icon: BellRing },
-  { id: "intro", label: "Self-introduction", icon: MicVocal },
-  { id: "cv", label: "Master CV", icon: FileUser },
-];
 
 const REMOTE_OPTIONS = [
   { value: "remote", label: "Remote only" },
@@ -27,26 +19,19 @@ const REMOTE_OPTIONS = [
 ];
 
 function Section({
-  id,
-  icon: Icon,
   title,
   description,
   action,
   children,
 }: {
-  id: string;
-  icon: LucideIcon;
   title: string;
   description: string;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="card scroll-mt-24">
+    <section className="card">
       <div className="mb-6 flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent" aria-hidden="true">
-          <Icon className="size-[1.125rem]" />
-        </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
           <p className="text-sm text-muted">{description}</p>
@@ -78,7 +63,8 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: PageProps<"/settings">) {
+  const { tab } = await searchParams;
   const supabase = await requireOwner();
   const { data: settings, error } = await supabase.from("settings").select("*").single();
   if (error) throw error;
@@ -93,188 +79,198 @@ export default async function SettingsPage() {
         <p className="page-subtitle">What the daily finder looks for, and what tailoring works from.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-8">
-        <nav aria-label="Settings sections" className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-          <ul className="flex gap-2 lg:sticky lg:top-24 lg:flex-col lg:gap-1">
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
-              <li key={id} className="shrink-0">
-                <a
-                  href={`#${id}`}
-                  className="flex items-center gap-2.5 rounded-full border border-border bg-surface px-3.5 py-2 text-sm font-medium whitespace-nowrap text-muted transition-colors hover:text-foreground lg:rounded-xl lg:border-0 lg:bg-transparent lg:px-3 lg:hover:bg-surface"
-                >
-                  <Icon className="size-4 shrink-0" aria-hidden="true" />
-                  {label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="flex min-w-0 flex-col gap-6">
-          <Section id="criteria" icon={SlidersHorizontal} title="Job search" description="The daily finder scores every job it finds against these.">
-            <SettingsForm action={saveCriteria}>
-              <Group title="What and where">
-                <Field htmlFor="target_roles" label="Target roles" hint="Press Enter after each one.">
-                  <TagInput id="target_roles" name="target_roles" defaultValue={settings.target_roles} placeholder="e.g. AI Engineer" />
-                </Field>
-                <Field htmlFor="locations" label="Locations">
-                  <TagInput id="locations" name="locations" defaultValue={settings.locations} placeholder="e.g. Philippines" />
-                </Field>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium" id="remote-label">Work setup</span>
-                  <div role="radiogroup" aria-labelledby="remote-label" className="grid grid-cols-2 gap-1 rounded-xl bg-surface-muted p-1 sm:grid-cols-4">
-                    {REMOTE_OPTIONS.map((option) => (
-                      <label
-                        key={option.value}
-                        className="flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors has-checked:bg-surface has-checked:text-foreground has-checked:shadow-rest has-focus-visible:ring-2 has-focus-visible:ring-accent/40"
-                      >
-                        <input
-                          type="radio"
-                          name="remote_preference"
-                          value={option.value}
-                          defaultChecked={settings.remote_preference === option.value}
-                          className="sr-only"
-                        />
-                        {option.label}
-                      </label>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted">With remote only, on-site and hybrid jobs are ruled out.</p>
-                </div>
-              </Group>
-
-              <Group title="Pay">
-                <Field htmlFor="salary_floor" label="Lowest pay you'd accept" hint="Jobs that post a lower figure in the same currency are ruled out.">
-                  <div className="flex max-w-sm rounded-xl border border-border bg-surface transition-[border-color,box-shadow] focus-within:border-accent focus-within:ring-3 focus-within:ring-accent/20">
-                    <input
-                      name="salary_currency"
-                      aria-label="Currency"
-                      maxLength={3}
-                      defaultValue={settings.salary_currency ?? ""}
-                      placeholder="PHP"
-                      className="w-16 rounded-l-xl border-r border-border bg-surface-muted/60 px-3 text-center text-sm font-semibold uppercase outline-none"
-                    />
-                    <input
-                      id="salary_floor"
-                      name="salary_floor"
-                      inputMode="numeric"
-                      defaultValue={settings.salary_floor?.toLocaleString("en") ?? ""}
-                      placeholder="1,000,000"
-                      className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-sm tabular-nums outline-none"
-                    />
-                  </div>
-                </Field>
-              </Group>
-
-              <Group title="Keywords">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field htmlFor="must_have_keywords" label="Must-have" hint="The more a job mentions, the higher it scores.">
-                    <TagInput id="must_have_keywords" name="must_have_keywords" defaultValue={settings.must_have_keywords} placeholder="e.g. TypeScript" />
-                  </Field>
-                  <Field htmlFor="excluded_keywords" label="Excluded" hint="Any job that mentions one is ruled out.">
-                    <TagInput id="excluded_keywords" name="excluded_keywords" defaultValue={settings.excluded_keywords} placeholder="e.g. PHP" tone="danger" />
-                  </Field>
-                </div>
-              </Group>
-            </SettingsForm>
-          </Section>
-
-          <Section
-            id="career-pages"
-            icon={Building2}
-            title="Career pages"
-            description="Company job boards the daily finder reads, from Greenhouse, Lever or Ashby."
-          >
-            {boards.length > 0 && (
-              <ul className="mb-6 grid gap-2 sm:grid-cols-2">
-                {boards.map((board) => (
-                  <li key={board.id} className="flex items-center gap-3 rounded-xl border border-border py-2 pr-1.5 pl-2.5">
-                    <CompanyMark company={board.company ?? board.slug} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-medium">{board.company ?? board.slug}</span>
-                        <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-xs text-muted capitalize">{board.ats}</span>
+      <SettingsTabs
+        initial={typeof tab === "string" ? tab : ""}
+        tabs={[
+          {
+            id: "criteria",
+            label: "Job search",
+            icon: <SlidersHorizontal />,
+            panel: (
+              <Section title="Job search" description="The daily finder scores every job it finds against these.">
+                <SettingsForm action={saveCriteria}>
+                  <Group title="What and where">
+                    <Field htmlFor="target_roles" label="Target roles" hint="Press Enter after each one.">
+                      <TagInput id="target_roles" name="target_roles" defaultValue={settings.target_roles} placeholder="e.g. AI Engineer" />
+                    </Field>
+                    <Field htmlFor="locations" label="Locations">
+                      <TagInput id="locations" name="locations" defaultValue={settings.locations} placeholder="e.g. Philippines" />
+                    </Field>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium" id="remote-label">Work setup</span>
+                      <div role="radiogroup" aria-labelledby="remote-label" className="grid grid-cols-2 gap-1 rounded-xl bg-surface-muted p-1 sm:grid-cols-4">
+                        {REMOTE_OPTIONS.map((option) => (
+                          <label
+                            key={option.value}
+                            className="flex cursor-pointer items-center justify-center rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors has-checked:bg-surface has-checked:text-foreground has-checked:shadow-rest has-focus-visible:ring-2 has-focus-visible:ring-accent/40"
+                          >
+                            <input
+                              type="radio"
+                              name="remote_preference"
+                              value={option.value}
+                              defaultChecked={settings.remote_preference === option.value}
+                              className="sr-only"
+                            />
+                            {option.label}
+                          </label>
+                        ))}
                       </div>
-                      {board.last_error ? (
-                        <p className="text-xs text-danger">{board.last_error}</p>
-                      ) : (
-                        <p className="text-xs text-muted">
-                          {board.last_checked_at ? `Read ${formatDate(board.last_checked_at)}` : "Not read yet"}
-                        </p>
-                      )}
+                      <p className="text-xs text-muted">With remote only, on-site and hybrid jobs are ruled out.</p>
                     </div>
-                    <form action={removeCareerBoard}>
-                      <input type="hidden" name="id" value={board.id} />
-                      <button
-                        aria-label={`Remove ${board.company ?? board.slug}`}
-                        title="Remove"
-                        className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-danger-soft hover:text-danger"
-                      >
-                        <Trash2 className="size-4" aria-hidden="true" />
-                      </button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <SettingsForm action={addCareerBoard} submitLabel="Add career page">
-              <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
-                <label className="field">
-                  Job-board link
-                  <input name="link" type="url" placeholder="https://jobs.lever.co/company" required />
-                </label>
-                <label className="field">
-                  <span>Company name <span className="font-normal text-muted">(optional)</span></span>
-                  <input name="company" />
-                </label>
-              </div>
-            </SettingsForm>
-          </Section>
+                  </Group>
 
-          <Section id="follow-up" icon={BellRing} title="Follow-up" description="When a quiet application needs a nudge, and when to give up on it.">
-            <SettingsForm action={saveFollowUp}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field htmlFor="follow_up_after_days" label="Remind me after" hint="Shows under Follow up on the dashboard.">
-                  <DaysInput id="follow_up_after_days" min={1} defaultValue={settings.follow_up_after_days} />
-                </Field>
-                <Field htmlFor="ghost_after_days" label="Mark ghosted after" hint="Must be longer than the reminder.">
-                  <DaysInput id="ghost_after_days" min={2} defaultValue={settings.ghost_after_days} />
-                </Field>
-              </div>
-            </SettingsForm>
-          </Section>
+                  <Group title="Pay">
+                    <Field htmlFor="salary_floor" label="Lowest pay you'd accept" hint="Jobs that post a lower figure in the same currency are ruled out.">
+                      <div className="flex max-w-sm rounded-xl border border-border bg-surface transition-[border-color,box-shadow] focus-within:border-accent focus-within:ring-3 focus-within:ring-accent/20">
+                        <input
+                          name="salary_currency"
+                          aria-label="Currency"
+                          maxLength={3}
+                          defaultValue={settings.salary_currency ?? ""}
+                          placeholder="PHP"
+                          className="w-16 rounded-l-xl border-r border-border bg-surface-muted/60 px-3 text-center text-sm font-semibold uppercase outline-none"
+                        />
+                        <input
+                          id="salary_floor"
+                          name="salary_floor"
+                          inputMode="numeric"
+                          defaultValue={settings.salary_floor?.toLocaleString("en") ?? ""}
+                          placeholder="1,000,000"
+                          className="min-w-0 flex-1 bg-transparent px-3.5 py-2.5 text-sm tabular-nums outline-none"
+                        />
+                      </div>
+                    </Field>
+                  </Group>
 
-          <Section
-            id="intro"
-            icon={MicVocal}
-            title="Self-introduction"
-            description="Adapted for each application that asks for one."
-            action={
-              settings.self_intro && (
-                <Link href="/settings/teleprompter" className="btn shrink-0 px-3 py-2">
-                  <Presentation className="size-4" aria-hidden="true" />
-                  <span className="hidden sm:inline">Teleprompter</span>
-                </Link>
-              )
-            }
-          >
-            <SettingsForm action={saveSelfIntro}>
-              <IntroField defaultValue={settings.self_intro ?? ""} />
-            </SettingsForm>
-          </Section>
-
-          <Section
-            id="cv"
-            icon={FileUser}
-            title="Master CV"
-            description="Tailoring only rewords and reorders what is here. It never adds a skill, employer, title or date."
-          >
-            <SettingsForm action={saveMasterCv} submitLabel="Save CV">
-              <CvEditor initial={cv} />
-            </SettingsForm>
-          </Section>
-        </div>
-      </div>
+                  <Group title="Keywords">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field htmlFor="must_have_keywords" label="Must-have" hint="The more a job mentions, the higher it scores.">
+                        <TagInput id="must_have_keywords" name="must_have_keywords" defaultValue={settings.must_have_keywords} placeholder="e.g. TypeScript" />
+                      </Field>
+                      <Field htmlFor="excluded_keywords" label="Excluded" hint="Any job that mentions one is ruled out.">
+                        <TagInput id="excluded_keywords" name="excluded_keywords" defaultValue={settings.excluded_keywords} placeholder="e.g. PHP" tone="danger" />
+                      </Field>
+                    </div>
+                  </Group>
+                </SettingsForm>
+              </Section>
+            ),
+          },
+          {
+            id: "career-pages",
+            label: "Career pages",
+            icon: <Building2 />,
+            panel: (
+              <Section
+                title="Career pages"
+                description="Company job boards the daily finder reads, from Greenhouse, Lever or Ashby."
+              >
+                {boards.length > 0 && (
+                  <ul className="mb-6 grid gap-2 sm:grid-cols-2">
+                    {boards.map((board) => (
+                      <li key={board.id} className="flex items-center gap-3 rounded-xl border border-border py-2 pr-1.5 pl-2.5">
+                        <CompanyMark company={board.company ?? board.slug} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate font-medium">{board.company ?? board.slug}</span>
+                            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-xs text-muted capitalize">{board.ats}</span>
+                          </div>
+                          {board.last_error ? (
+                            <p className="text-xs text-danger">{board.last_error}</p>
+                          ) : (
+                            <p className="text-xs text-muted">
+                              {board.last_checked_at ? `Read ${formatDate(board.last_checked_at)}` : "Not read yet"}
+                            </p>
+                          )}
+                        </div>
+                        <form action={removeCareerBoard}>
+                          <input type="hidden" name="id" value={board.id} />
+                          <button
+                            aria-label={`Remove ${board.company ?? board.slug}`}
+                            title="Remove"
+                            className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-muted transition-colors hover:bg-danger-soft hover:text-danger"
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                          </button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <SettingsForm action={addCareerBoard} submitLabel="Add career page">
+                  <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
+                    <label className="field">
+                      Job-board link
+                      <input name="link" type="url" placeholder="https://jobs.lever.co/company" required />
+                    </label>
+                    <label className="field">
+                      <span>Company name <span className="font-normal text-muted">(optional)</span></span>
+                      <input name="company" />
+                    </label>
+                  </div>
+                </SettingsForm>
+              </Section>
+            ),
+          },
+          {
+            id: "follow-up",
+            label: "Follow-up",
+            icon: <BellRing />,
+            panel: (
+              <Section title="Follow-up" description="When a quiet application needs a nudge, and when to give up on it.">
+                <SettingsForm action={saveFollowUp}>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field htmlFor="follow_up_after_days" label="Remind me after" hint="Shows under Follow up on the dashboard.">
+                      <DaysInput id="follow_up_after_days" min={1} defaultValue={settings.follow_up_after_days} />
+                    </Field>
+                    <Field htmlFor="ghost_after_days" label="Mark ghosted after" hint="Must be longer than the reminder.">
+                      <DaysInput id="ghost_after_days" min={2} defaultValue={settings.ghost_after_days} />
+                    </Field>
+                  </div>
+                </SettingsForm>
+              </Section>
+            ),
+          },
+          {
+            id: "intro",
+            label: "Self-introduction",
+            icon: <MicVocal />,
+            panel: (
+              <Section
+                title="Self-introduction"
+                description="Adapted for each application that asks for one."
+                action={
+                  settings.self_intro && (
+                    <Link href="/settings/teleprompter" className="btn shrink-0 px-3 py-2">
+                      <Presentation className="size-4" aria-hidden="true" />
+                      <span className="hidden sm:inline">Teleprompter</span>
+                    </Link>
+                  )
+                }
+              >
+                <SettingsForm action={saveSelfIntro}>
+                  <IntroField defaultValue={settings.self_intro ?? ""} />
+                </SettingsForm>
+              </Section>
+            ),
+          },
+          {
+            id: "cv",
+            label: "Master CV",
+            icon: <FileUser />,
+            panel: (
+              <Section
+                title="Master CV"
+                description="Tailoring only rewords and reorders what is here. It never adds a skill, employer, title or date."
+              >
+                <SettingsForm action={saveMasterCv} submitLabel="Save CV">
+                  <CvEditor initial={cv} />
+                </SettingsForm>
+              </Section>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

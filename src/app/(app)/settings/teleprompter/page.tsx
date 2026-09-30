@@ -9,7 +9,7 @@ export default async function TeleprompterPage() {
   if (!settings?.self_intro) {
     return (
       <p className="text-muted">
-        Write your self-introduction in <Link href="/settings" className="text-accent hover:underline">Settings</Link> first.
+        Write your self-introduction in <Link href="/settings?tab=intro" className="text-accent hover:underline">Settings</Link> first.
       </p>
     );
   }
