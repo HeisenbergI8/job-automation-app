@@ -9,14 +9,27 @@ import { z } from "zod";
 import { askClaudeCode, structuredOutput } from "./scoring";
 import { htmlToText, NOT_REMOTE, type Posting } from "./sources";
 
+// The addresses that send job alerts and job recommendations, seen in the owner's inbox on 2026-09-30.
+// Other mail from these sites (connection requests, Premium offers, application updates) is not read.
 export const ALERT_SENDERS = [
-  { site: "linkedin", from: "linkedin.com", name: "LinkedIn" },
-  { site: "jobstreet", from: "jobstreet", name: "JobStreet" },
-  { site: "indeed", from: "indeed.com", name: "Indeed" },
-  { site: "onlinejobs", from: "onlinejobs.ph", name: "OnlineJobs.ph" },
+  { site: "linkedin", from: ["jobalerts-noreply@linkedin.com", "jobs-noreply@linkedin.com"], name: "LinkedIn" },
+  { site: "jobstreet", from: ["noreply@e.jobstreet.com", "noreply@s.jobstreet.com"], name: "JobStreet" },
+  { site: "indeed", from: ["donotreply@jobalert.indeed.com", "donotreply@match.indeed.com"], name: "Indeed" },
+  { site: "onlinejobs", from: ["onlinejobs.ph"], name: "OnlineJobs.ph" },
   // Owner, 2026-09-30: Glassdoor alerts, after switching them from US to Philippines/remote searches.
-  { site: "glassdoor", from: "glassdoor.com", name: "Glassdoor" },
+  { site: "glassdoor", from: ["noreply@glassdoor.com"], name: "Glassdoor" },
 ] as const;
+
+/**
+ * Subjects of mail from those senders that holds no new jobs to review: account and application
+ * notices, alert confirmations, and alerts for US locations (the owner can't apply there).
+ */
+const NOT_A_JOB_ALERT =
+  /has closed|new activity|responded to your application|save your search|verified|is now active|want to connect|premium|offer for you|(jobs?|hiring) in [^.]*,\s*(US|[A-Z]{2})\b/i;
+
+export function isJobAlert(subject: string) {
+  return !NOT_A_JOB_ALERT.test(subject);
+}
 
 /** Alert emails from the last two days are read (each only once; see processed_emails). */
 const LOOKBACK_DAYS = 2;
@@ -146,13 +159,15 @@ export async function readJobAlerts(processed: Set<string>, errors: string[], no
   try {
     const since = new Date(now.getTime() - LOOKBACK_DAYS * 86_400_000);
     for (const sender of ALERT_SENDERS) {
-      const uids = (await client.search({ since, from: sender.from }, { uid: true })) || [];
+      const uids = (
+        await Promise.all(sender.from.map(async (from) => (await client.search({ since, from }, { uid: true })) || []))
+      ).flat();
       if (!uids.length) continue;
       for (const message of await client.fetchAll(uids, { source: true }, { uid: true })) {
         if (!message.source || emails.length >= MAX_ALERT_EMAILS) continue;
         const mail = await simpleParser(message.source);
         const messageId = mail.messageId ?? `${sender.site}-${message.uid}`;
-        if (processed.has(messageId)) continue;
+        if (processed.has(messageId) || !isJobAlert(mail.subject ?? "")) continue;
         const links = emailLinks(typeof mail.html === "string" ? mail.html : "");
         try {
           const jobs = await extractJobs(mail.subject ?? "", mail.text ?? htmlToText(String(mail.html ?? "")), links);

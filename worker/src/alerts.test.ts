@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalJobUrl, emailLinks, toPostings } from "./alerts";
+import { canonicalJobUrl, emailLinks, isJobAlert, toPostings } from "./alerts";
 
 describe("canonicalJobUrl", () => {
   it("strips tracking so the same job from two emails is one link", () => {
@@ -9,6 +9,32 @@ describe("canonicalJobUrl", () => {
     expect(canonicalJobUrl("https://ph.indeed.com/rc/clk?jk=a1b2c3d4e5&from=ja&tk=x")).toBe("https://ph.indeed.com/viewjob?jk=a1b2c3d4e5");
     expect(canonicalJobUrl("https://v2.onlinejobs.ph/jobseekers/job/ai-engineer-1738202?utm_source=alert")).toBe("https://www.onlinejobs.ph/jobseekers/job/ai-engineer-1738202");
     expect(canonicalJobUrl("https://example.com/careers/1?x=1")).toBe("https://example.com/careers/1?x=1");
+  });
+});
+
+describe("isJobAlert (subjects from the owner's inbox, 2026-09-30)", () => {
+  it("keeps job alerts and recommendations", () => {
+    for (const subject of [
+      "White Cloak Technologies, Inc. is hiring a Full Stack (AI Native) Software Engineer",
+      "New jobs similar to Software Engineer at CORTO",
+      "John Ross, apply now to ‘Software Engineer - Applied AI at DevRev’",
+      "Software Developer - AI Trainer at DataAnnotation in Cebu City and 2 more new jobs",
+      "Full-Stack AI Engineer (Int'l Hiring) at ERNI and 9 more jobs in Bacoor for you. Apply Now",
+    ]) expect(isJobAlert(subject)).toBe(true);
+  });
+
+  it("skips notices and alerts for US locations", () => {
+    for (const subject of [
+      "Hi John Ross, the Full-Stack Software Developer job with VA Masters has closed",
+      "John Ross, new activity in jobs you applied for",
+      "Offshore Outsource Operations, Inc. has responded to your application for Senior Agentic A",
+      "Save your search for matching jobs delivered to your inbox",
+      "John Ross, show employers your TESDA skills are verified",
+      "Your job alert for AI Engineer is now active",
+      "Full Stack Engineer at Cogniify and 11 more jobs in Remote, US for you. Apply Now.",
+      "Capgemini Engineering, Capgemini and others are hiring in Dallas, TX. Apply Now.",
+      "Software Engineer - Planner GPU Compute at Zoox and 6 more jobs in San Francisco, CA for you",
+    ]) expect(isJobAlert(subject)).toBe(false);
   });
 });
 

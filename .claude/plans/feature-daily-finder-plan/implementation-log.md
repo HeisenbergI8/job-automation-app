@@ -203,3 +203,11 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **Doc drift (auditor F2/F3):** comments no longer say OnlineJobs.ph sends no alerts. The alerts, run and scoring comments, the ROADMAP (5.3, 5.5, Settled) and the README (intro, 6c with the OnlineJobs alert step and a note to check their Terms of Service) now name all four sites.
 - **Still open:** real alert-email senders and link formats (all four sites); OnlineJobs.ph's Terms of Service (the owner was asked). For stage 6, applying on OnlineJobs.ph uses the owner's account, so decide whether it joins the no-auto-apply list.
 - **Gate:** `npm run verify` 99/99.
+
+## Gmail alerts: exact senders, skip non-alert mail — 2026-09-30
+
+**Files changed:** `worker/src/alerts.ts`, `worker/src/alerts.test.ts`
+**Why:** the first live read matched connection requests, Premium offers, "job has closed" notices and US-location alerts. Senders are now the exact alert addresses seen in the owner's inbox, and `isJobAlert` skips those subjects.
+**Gate:** `npm run verify` in worker, 101/101.
+**Live run:** `npm start` — 3,193 read (2,986 career pages, 18 JSearch, 137 OnlineJobs.ph, 52 from 8 alert emails), 345 from the last 7 days, 32 reviewed, 3 saved (2 LinkedIn, 1 OnlineJobs.ph), 0 problems. 24 alert jobs left for the next run (cap 20), so only 1 email was marked processed.
+**Reviews:** none separately; unit tests use real subjects from the inbox and the live run exercised it.
