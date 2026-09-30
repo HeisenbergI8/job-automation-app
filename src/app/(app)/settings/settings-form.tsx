@@ -24,7 +24,7 @@ export function SettingsForm({
       {children}
       <div className="flex items-center gap-3">
         <button className="btn-primary" disabled={pending}>{pending ? "Saving…" : "Save"}</button>
-        {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+        {state?.error && <p className="text-sm text-danger">{state.error}</p>}
         {state?.saved && !pending && <p className="text-sm text-muted">Saved.</p>}
       </div>
     </form>

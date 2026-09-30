@@ -43,10 +43,10 @@ export function LoginForm() {
         </div>
       </label>
       <label className="flex items-center gap-2 text-sm">
-        <input name="remember" type="checkbox" defaultChecked />
+        <input name="remember" type="checkbox" defaultChecked className="accent-accent" />
         Remember me
       </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
       <button className="btn-primary" disabled={pending}>
         {pending ? "Logging in…" : "Log in"}
       </button>

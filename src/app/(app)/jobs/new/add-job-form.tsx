@@ -60,7 +60,7 @@ export function AddJobForm() {
         Job description
         <textarea name="description" rows={10} />
       </label>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <div>
         <button className="btn-primary" disabled={pending}>{pending ? "Saving…" : "Save job"}</button>
       </div>

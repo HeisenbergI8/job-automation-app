@@ -74,14 +74,14 @@ export default async function SettingsPage() {
                 <span>
                   {board.company ?? board.slug} <span className="text-muted">({board.ats}: {board.slug})</span>
                   {board.last_error ? (
-                    <span className="block text-red-600">{board.last_error}</span>
+                    <span className="block text-danger">{board.last_error}</span>
                   ) : (
                     board.last_checked_at && <span className="block text-muted">Read {formatDate(board.last_checked_at)}</span>
                   )}
                 </span>
                 <form action={removeCareerBoard}>
                   <input type="hidden" name="id" value={board.id} />
-                  <button className="text-sm text-muted hover:text-red-600">Remove</button>
+                  <button className="text-sm text-muted hover:text-danger">Remove</button>
                 </form>
               </li>
             ))}

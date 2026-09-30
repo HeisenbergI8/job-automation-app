@@ -15,12 +15,12 @@ export function UploadForm({ jobId }: { jobId: string }) {
           <option value="intro">Intro</option>
         </select>
       </label>
-      <label className="field">
+      <label className="field max-w-full">
         <span>File <span className="font-normal text-muted">(up to 4MB)</span></span>
-        <input name="file" type="file" required />
+        <input name="file" type="file" required className="min-w-0 max-w-full" />
       </label>
       <button className="btn" disabled={pending}>{pending ? "Uploading…" : "Upload"}</button>
-      {state?.error && <p className="w-full text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="w-full text-sm text-danger">{state.error}</p>}
     </form>
   );
 }

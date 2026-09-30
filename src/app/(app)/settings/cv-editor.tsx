@@ -39,7 +39,7 @@ function Entries<T>({
             {index > 0 && (
               <button type="button" className="text-muted hover:text-foreground" onClick={() => move(index)}>Move up</button>
             )}
-            <button type="button" className="text-red-600 hover:underline" onClick={() => onChange(items.filter((_, i) => i !== index))}>
+            <button type="button" className="text-danger hover:underline" onClick={() => onChange(items.filter((_, i) => i !== index))}>
               Remove
             </button>
           </div>

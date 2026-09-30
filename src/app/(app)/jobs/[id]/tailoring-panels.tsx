@@ -14,7 +14,7 @@ export function TailorButton({ jobId }: { jobId: string }) {
         </button>
         {pending && <span className="text-sm text-muted">This takes a minute or two.</span>}
       </div>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
     </form>
   );
 }
@@ -27,7 +27,7 @@ export function NewIntroForm({ jobId }: { jobId: string }) {
         <span>What the application asks for <span className="font-normal text-muted">(length, word count, questions)</span></span>
         <textarea name="requirements" rows={3} placeholder="e.g. In under 100 words, why do you want to work here?" required />
       </label>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <div>
         <button className="btn" disabled={pending}>{pending ? "Adapting…" : "Adapt my intro"}</button>
       </div>
@@ -36,8 +36,8 @@ export function NewIntroForm({ jobId }: { jobId: string }) {
 }
 
 const STATUS_STYLES = {
-  pending: "text-amber-700 dark:text-amber-300",
-  approved: "text-emerald-700 dark:text-emerald-300",
+  pending: "text-warn",
+  approved: "text-accent",
   rejected: "text-muted",
 };
 
@@ -86,7 +86,7 @@ export function IntroAdaptation({
           )}
         </form>
       )}
-      {error && <p className="mt-2 text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-danger">{error}</p>}
     </div>
   );
 }

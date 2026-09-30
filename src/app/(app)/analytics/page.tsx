@@ -54,18 +54,18 @@ export default async function AnalyticsPage() {
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="card">
-          <div className="text-sm text-muted">Applications</div>
-          <div className="mt-1 text-3xl font-semibold tabular-nums">{overall.total}</div>
+          <div className="section-title mb-2">Applications</div>
+          <div className="stat-value">{overall.total}</div>
         </div>
         <div className="card">
-          <div className="text-sm text-muted">Response rate</div>
-          <div className="mt-1 text-3xl font-semibold tabular-nums">{percent(overall.rate)}</div>
-          <div className="text-xs text-muted">{overall.replied} of {overall.total} got any reply, rejections included</div>
+          <div className="section-title mb-2">Response rate</div>
+          <div className="stat-value">{percent(overall.rate)}</div>
+          <div className="mt-1 text-xs text-muted">{overall.replied} of {overall.total} got any reply, rejections included</div>
         </div>
         <div className="card">
-          <div className="text-sm text-muted">Average days to first reply</div>
-          <div className="mt-1 text-3xl font-semibold tabular-nums">{averageDays != null ? averageDays.toFixed(1) : "—"}</div>
-          <div className="text-xs text-muted">across {replyDays.length} replies</div>
+          <div className="section-title mb-2">Average days to first reply</div>
+          <div className="stat-value">{averageDays != null ? averageDays.toFixed(1) : "—"}</div>
+          <div className="mt-1 text-xs text-muted">across {replyDays.length} replies</div>
         </div>
       </section>
 
@@ -81,7 +81,7 @@ export default async function AnalyticsPage() {
         <TableView headers={["Week of", "Applications"]} rows={weekly.map(({ week, count }) => [formatDate(week), count])} />
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 *:min-w-0 lg:grid-cols-2">
         <section className="card">
           <h2 className="section-title">Funnel</h2>
           <BarList

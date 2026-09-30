@@ -89,7 +89,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
           </thead>
           <tbody>
             {jobs.map((job) => (
-              <tr key={job.id} className="hover:bg-background">
+              <tr key={job.id} className="hover:bg-surface-muted">
                 <td><StatusBadge status={job.status} /></td>
                 <td className="font-medium">
                   <Link href={`/jobs/${job.id}`} className="hover:underline">{job.company}</Link>

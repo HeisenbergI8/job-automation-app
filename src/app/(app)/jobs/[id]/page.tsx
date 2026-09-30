@@ -4,6 +4,7 @@ import { formatDate, formatSalary, STATUS_LABELS, type JobStatus } from "@/lib/j
 import { cvText, parseMasterCv } from "@/lib/master-cv";
 import { requireOwner } from "@/lib/supabase/server";
 import { keywordScore } from "@/lib/tailoring/ats";
+import { CompanyMark } from "../company-mark";
 import { StatusBadge } from "../status-badge";
 import { StatusControl } from "./status-control";
 import { IntroAdaptation, NewIntroForm, TailorButton } from "./tailoring-panels";
@@ -35,7 +36,7 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
   if (!job) notFound();
 
   const [{ data: events }, { data: transitions }, { data: documents }, { data: intros }, { data: settings }] = await Promise.all([
-    supabase.from("job_status_events").select("*").eq("job_id", id).order("changed_at", { ascending: false }),
+    supabase.from("job_status_events").select("*").eq("job_id", id).order("changed_at"),
     supabase.from("job_status_transitions").select("to_status").eq("from_status", job.status),
     supabase.from("application_documents").select("*").eq("job_id", id).order("created_at", { ascending: false }),
     supabase.from("intro_adaptations").select("*").eq("job_id", id).order("created_at", { ascending: false }),
@@ -66,17 +67,27 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
     <div className="flex flex-col gap-6">
       <div>
         <Link href="/jobs" className="text-sm text-muted hover:text-foreground">← Jobs</Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="page-title">{job.role}</h1>
-          <StatusBadge status={job.status} />
+        <div className="mt-4 flex items-start gap-4">
+          <CompanyMark company={job.company} size="lg" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="page-title">{job.role}</h1>
+              <StatusBadge status={job.status} />
+            </div>
+            <p className="mt-1 text-muted">
+              {job.company} ·{" "}
+              <a href={job.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                Original posting
+              </a>
+            </p>
+          </div>
+          {job.fit_score != null && (
+            <span className="shrink-0 text-sm font-medium text-accent">
+              <span className="tabular-nums">{job.fit_score}</span> fit
+            </span>
+          )}
         </div>
-        <p className="mt-1 text-muted">
-          {job.company} ·{" "}
-          <a href={job.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">
-            Original posting
-          </a>
-        </p>
-        <p className="mt-3 rounded-md border border-border bg-surface px-3 py-2 text-sm">
+        <p className="mt-4 rounded-md border border-accent/25 bg-accent-soft px-4 py-3 text-sm">
           <span className="font-semibold">Next step: </span>
           {NEXT_STEP[job.status]}
           {job.status === "applied" && job.date_applied && ` (applied ${formatDate(job.date_applied)}, ${job.apply_method ?? "manual"})`}
@@ -84,20 +95,20 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
           <section className="card">
             <h2 className="section-title">Details</h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
               {fields.map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-muted">{label}</dt>
-                  <dd className="font-medium">{value}</dd>
+                  <dd className="font-medium tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
             {job.fit_reasons?.length ? (
-              <ul className="mt-4 list-disc pl-5 text-sm">
-                {job.fit_reasons.map((reason) => <li key={reason}>{reason}</li>)}
+              <ul className="mt-4 flex flex-wrap gap-1.5">
+                {job.fit_reasons.map((reason) => <li key={reason} className="chip">{reason}</li>)}
               </ul>
             ) : null}
           </section>
@@ -169,11 +180,11 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
           </section>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="order-first flex flex-col gap-6 lg:order-none">
           <section className="card">
             <h2 className="section-title">Status</h2>
             {waitingForIntro && (
-              <p className="mb-3 rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+              <p className="mb-3 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
                 Waiting for you to approve the adapted intro. The application can&apos;t be marked applied until then.
               </p>
             )}
@@ -182,16 +193,36 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
 
           <section className="card">
             <h2 className="section-title">Timeline</h2>
-            <ol className="flex flex-col gap-3 text-sm">
-              {events?.map((event) => (
-                <li key={event.id} className="border-l-2 border-border pl-3">
-                  <div className="font-medium">{STATUS_LABELS[event.to_status]}</div>
-                  <div className="text-muted">
-                    {new Date(event.changed_at).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}
-                  </div>
-                  {event.note && <div>{event.note}</div>}
-                </li>
-              ))}
+            <ol className="text-sm">
+              {events?.map((event, index) => {
+                const current = index === events.length - 1;
+                return (
+                  <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">
+                    {!current && <span className="absolute top-6 bottom-0 left-[11px] w-px bg-border" aria-hidden="true" />}
+                    <span
+                      aria-hidden="true"
+                      className={`relative flex size-6 shrink-0 items-center justify-center rounded-full ${
+                        current ? "border-2 border-accent bg-surface" : "bg-accent text-accent-foreground"
+                      }`}
+                    >
+                      {current ? (
+                        <span className="size-2.5 rounded-full bg-accent" />
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m5 12 5 5 9-10" />
+                        </svg>
+                      )}
+                    </span>
+                    <div className="pt-0.5">
+                      <div className="font-medium">{STATUS_LABELS[event.to_status]}</div>
+                      <div className="text-xs text-muted">
+                        {new Date(event.changed_at).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}
+                      </div>
+                      {event.note && <div className="mt-0.5 text-muted">{event.note}</div>}
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
           </section>
         </div>

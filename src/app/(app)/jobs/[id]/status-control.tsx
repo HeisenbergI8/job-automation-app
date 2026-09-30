@@ -24,7 +24,7 @@ export function StatusControl({ jobId, nextStatuses }: { jobId: string; nextStat
         <span>Note <span className="font-normal text-muted">(optional)</span></span>
         <input name="note" placeholder="e.g. Recruiter call booked" />
       </label>
-      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      {state?.error && <p className="text-sm text-danger">{state.error}</p>}
       <button className="btn-primary" disabled={pending}>{pending ? "Saving…" : "Change status"}</button>
     </form>
   );

@@ -1,33 +1,53 @@
 @import "tailwindcss";
 
+/* "A quiet ledger": warm paper, hairline borders, near-black ink, one forest-green accent.
+   Tokens come from docs/DESIGN-PROMPT.md. */
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
-  --surface: #ffffff;
-  --border: #e4e4e7;
-  --muted: #71717a;
-  --accent: #2563eb;
+  --background: #f5f3ee;
+  --foreground: #1a1a17;
+  --surface: #fbfaf7;
+  --surface-muted: #efece5;
+  --border: #e3e0d8;
+  --muted: #77746c;
+  --accent: #1f5f4a;
+  --accent-foreground: #ffffff;
+  --accent-soft: #e3eee8;
+  --danger: #b4412f;
+  --warn: #8a5a12;
+  --warn-soft: #f6ead2;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #09090b;
-    --foreground: #f4f4f5;
-    --surface: #18181b;
-    --border: #27272a;
-    --muted: #a1a1aa;
-    --accent: #60a5fa;
+    --background: #121210;
+    --foreground: #edebe6;
+    --surface: #1b1b19;
+    --surface-muted: #232320;
+    --border: #2a2a27;
+    --muted: #8e8b83;
+    --accent: #5bb894;
+    --accent-foreground: #0f1f18;
+    --accent-soft: #1d2f27;
+    --danger: #e0806f;
+    --warn: #e0b56a;
+    --warn-soft: #2e2618;
   }
 }
 
@@ -38,36 +58,46 @@ body {
 
 @layer components {
   .field {
-    @apply flex flex-col gap-1 text-sm font-medium;
+    @apply flex flex-col gap-1.5 text-sm font-medium;
   }
   .field input,
   .field select,
   .field textarea,
   .input {
-    @apply rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal outline-none focus:border-accent;
+    @apply rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal outline-none transition-colors placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/15;
   }
   .btn {
-    @apply inline-flex items-center justify-center rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium hover:bg-background disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted disabled:opacity-50;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-md bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50;
   }
   .card {
-    @apply rounded-lg border border-border bg-surface p-4;
+    @apply rounded-md border border-border bg-surface p-5;
   }
   .page-title {
     @apply text-2xl font-semibold tracking-tight;
   }
+  /* Small uppercase label with letter spacing, used for section headings and stat tiles. */
   .section-title {
-    @apply mb-3 text-sm font-semibold uppercase tracking-wide text-muted;
+    @apply mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
+  }
+  .stat-value {
+    @apply font-mono text-3xl font-medium tabular-nums tracking-tight;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs text-foreground/80;
   }
   .data-table {
     @apply w-full text-left text-sm;
   }
   .data-table th {
-    @apply border-b border-border px-3 py-2 font-medium text-muted;
+    @apply border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
   }
   .data-table td {
-    @apply border-b border-border px-3 py-2;
+    @apply border-b border-border px-4 py-3;
+  }
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
   }
 }

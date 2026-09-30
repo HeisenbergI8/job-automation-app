@@ -2,11 +2,14 @@
 // tooltip and a table view, so no value depends on reading a bar's length.
 import type { ReactNode } from "react";
 
-function Tooltip({ children }: { children: ReactNode }) {
+// Near a chart's edge the tooltip anchors to that side, so it never spills past the page.
+const TOOLTIP_ALIGN = { center: "left-1/2 -translate-x-1/2", start: "left-0", end: "right-0" };
+
+function Tooltip({ children, align = "center" }: { children: ReactNode; align?: keyof typeof TOOLTIP_ALIGN }) {
   return (
     <span
       role="tooltip"
-      className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-surface px-2 py-1 text-xs opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus:opacity-100"
+      className={`pointer-events-none absolute bottom-full z-10 mb-2 ${TOOLTIP_ALIGN[align]} whitespace-nowrap rounded-md border border-border bg-surface px-2 py-1 text-xs opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus:opacity-100`}
     >
       {children}
     </span>
@@ -17,16 +20,18 @@ export function TableView({ headers, rows }: { headers: string[]; rows: ReactNod
   return (
     <details className="mt-3 text-sm">
       <summary className="cursor-pointer text-muted hover:text-foreground">Show table</summary>
-      <table className="data-table mt-2">
-        <thead>
-          <tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex} className="tabular-nums">{cell}</td>)}</tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="mt-2 overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => (
+              <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex} className="tabular-nums">{cell}</td>)}</tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </details>
   );
 }
@@ -42,17 +47,59 @@ export function ColumnChart({ data }: { data: { label: string; value: number; to
       </div>
       <div className="flex-1">
         <div className="flex h-40 items-end gap-0.5 border-b border-border">
-          {data.map((point) => (
+          {data.map((point, index) => (
             <div key={point.label} tabIndex={0} className="group relative flex h-full flex-1 items-end justify-center outline-none">
               <div
                 className="w-full max-w-12 rounded-t bg-accent group-hover:opacity-80 group-focus:opacity-80"
                 style={{ height: `${(point.value / max) * 100}%` }}
               />
-              <Tooltip>{point.tooltip}</Tooltip>
+              <Tooltip align={index < data.length * 0.3 ? "start" : index >= data.length * 0.7 ? "end" : "center"}>{point.tooltip}</Tooltip>
             </div>
           ))}
         </div>
         <div className="mt-1 flex justify-between text-xs text-muted">
+          <span>{data[0]?.label}</span>
+          {data.length > 1 && <span>{data.at(-1)!.label}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A thin single line over time, one focusable dot per point. */
+export function LineChart({ data }: { data: { label: string; value: number; tooltip: string }[] }) {
+  const max = Math.max(1, ...data.map((point) => point.value));
+  const x = (index: number) => (data.length === 1 ? 50 : (index / (data.length - 1)) * 100);
+  const y = (value: number) => 100 - (value / max) * 100;
+  return (
+    <div className="flex gap-3">
+      <div className="flex h-32 flex-col justify-between text-right text-xs tabular-nums text-muted">
+        <span>{max}</span>
+        <span>0</span>
+      </div>
+      <div className="flex-1">
+        <div className="relative h-32 border-b border-l border-border">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" aria-hidden="true">
+            <polyline
+              points={data.map((point, index) => `${x(index)},${y(point.value)}`).join(" ")}
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="1.5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          {data.map((point, index) => (
+            <span
+              key={point.label}
+              tabIndex={0}
+              className="group absolute size-2 -translate-x-1/2 translate-y-1/2 rounded-full bg-accent ring-2 ring-surface outline-none"
+              style={{ left: `${x(index)}%`, bottom: `${100 - y(point.value)}%` }}
+            >
+              <Tooltip align={x(index) < 30 ? "start" : x(index) > 70 ? "end" : "center"}>{point.tooltip}</Tooltip>
+            </span>
+          ))}
+        </div>
+        <div className="mt-1.5 flex justify-between text-xs text-muted">
           <span>{data[0]?.label}</span>
           {data.length > 1 && <span>{data.at(-1)!.label}</span>}
         </div>
@@ -74,7 +121,7 @@ export function BarList({
       {data.map((row) => (
         <li key={row.label} tabIndex={0} className="group relative grid grid-cols-[7rem_1fr_6rem] items-center gap-3 outline-none">
           <span className="truncate">{row.label}</span>
-          <span className="h-3 rounded-r bg-background">
+          <span className="h-3 rounded-r bg-surface-muted">
             <span
               className="block h-full rounded-r bg-accent group-hover:opacity-80 group-focus:opacity-80"
               style={{ width: `${max ? (row.value / max) * 100 : 0}%` }}
