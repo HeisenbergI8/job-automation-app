@@ -116,6 +116,8 @@ This gets you the same jobs you'd see on those sites. The finder reads your job-
    - JobStreet (ph.jobstreet.com): search → **Save search / Get job alerts** (email, daily).
    - Indeed (ph.indeed.com): search → **Get new jobs for this search by email**.
    - OnlineJobs.ph: **Account → Job Alerts** → add your searches with email on.
+   - Glassdoor: search with location **Philippines** (and Remote) → **Create job alert**. Delete alerts for
+     US locations: those jobs are almost never open to you, and each one costs a Claude check.
 
    OnlineJobs.ph's job search is also read directly every run (5 searches, 5 seconds apart, as its
    robots.txt asks). Check their Terms of Service if you want to be sure this is fine.

@@ -14,6 +14,8 @@ export const ALERT_SENDERS = [
   { site: "jobstreet", from: "jobstreet", name: "JobStreet" },
   { site: "indeed", from: "indeed.com", name: "Indeed" },
   { site: "onlinejobs", from: "onlinejobs.ph", name: "OnlineJobs.ph" },
+  // Owner, 2026-09-30: Glassdoor alerts, after switching them from US to Philippines/remote searches.
+  { site: "glassdoor", from: "glassdoor.com", name: "Glassdoor" },
 ] as const;
 
 /** Alert emails from the last two days are read (each only once; see processed_emails). */
