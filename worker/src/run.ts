@@ -1,6 +1,6 @@
 // ROADMAP stage 5: the daily finder. Reads the company career pages in Settings and, with a JSearch key,
 // LinkedIn/Indeed/JobStreet via JSearch, OnlineJobs.ph's job search and the owner's job-alert emails; skips jobs already saved or already scored; removes duplicates,
-// scores, saves up to 3 jobs scoring MIN_FIT or more as `found`, logs the run in worker_runs and tells the owner on Telegram.
+// scores, saves the day's 3 highest-scoring jobs as `found`, logs the run in worker_runs and tells the owner on Telegram.
 //   npm start        hosted project (worker/.env); what the daily schedule runs
 //   npm run dev      local stack (worker/.env.local)
 //   --dry-run        reads and scores, records board errors, saves no jobs and sends nothing
@@ -196,7 +196,7 @@ async function main() {
 
   try {
     const { fetched, fresh, ranked, readEmails } = await findJobs(errors);
-    // Up to 3 jobs scoring MIN_FIT or more, picked by pickTop. A note goes first,
+    // The day's 3 highest-scoring jobs (pickTop). A note goes first,
     // so it is the first thing the owner reads, in the app and on Telegram.
     const top = pickTop(ranked).map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
     if (!dryRun && top.length) {

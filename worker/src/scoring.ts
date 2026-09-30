@@ -24,40 +24,29 @@ export type Ranked = Posting & Fit & { scoredBy: "claude-code" | "keywords" };
 /** Jobs saved per day, at most. */
 export const TOP = 3;
 /**
- * Owner's rule: only jobs scoring at least this are saved, so some days save fewer than TOP, or none.
- * Raised from 50 to 80 on 2026-09-30, with enough sources to be picky.
+ * Not a bar for the day's picks (owner, 2026-09-30: always send the day's best, whatever they score).
+ * A job Claude scores below this that isn't picked is remembered and never reviewed again, so weak
+ * jobs don't take up the review shortlist every day; better ones stay in the running.
  */
-export const MIN_FIT = 80;
+export const REVIEW_AGAIN_FROM = 50;
 
 /**
- * Jobs to remember as reviewed, so later runs skip them: only those Claude scored below MIN_FIT. Good
- * jobs that missed today's top TOP stay in the running, and a keyword-only score gets a Claude review
- * on a later run.
+ * Jobs to remember as reviewed, so later runs skip them: those Claude scored below REVIEW_AGAIN_FROM
+ * or found ineligible. A keyword-only score gets a Claude review on a later run.
  */
 export function rejectedByClaude(ranked: Ranked[]) {
-  return ranked.filter((job) => job.scoredBy === "claude-code" && (job.score < MIN_FIT || job.eligible === false));
+  return ranked.filter((job) => job.scoredBy === "claude-code" && (job.score < REVIEW_AGAIN_FROM || job.eligible === false));
 }
 
-/** Owner's order of preference (2026-09-29; OnlineJobs.ph added 2026-09-30). Other sites and company career pages fill the rest. */
+/** Owner's order of preference (2026-09-29; OnlineJobs.ph added 2026-09-30), for the review shortlist only. */
 export const PRIORITY_SITES = ["linkedin", "jobstreet", "indeed", "onlinejobs"];
 
 /**
- * The day's picks from `ranked` (best first), at most TOP:
- * 1. the best LinkedIn, JobStreet, Indeed and OnlineJobs.ph jobs scoring MIN_FIT or more, in that order;
- * 2. then the best from other sites, one per site first, so the picks come from several sites.
- * Nothing below MIN_FIT is ever picked (owner, 2026-09-30: the closest-match fallback was dropped).
+ * The day's picks: the TOP highest-scoring jobs the owner can apply for, whatever their score and
+ * whichever site they come from (owner, 2026-09-30). `ranked` is best first.
  */
 export function pickTop(ranked: Ranked[]): Ranked[] {
-  // A job the owner can't apply for from where they live is never picked.
-  const good = ranked.filter((job) => job.eligible !== false && job.score >= MIN_FIT);
-  const picks: Ranked[] = [];
-  const take = (job: Ranked | undefined) => {
-    if (job && picks.length < TOP && !picks.includes(job)) picks.push(job);
-  };
-  for (const site of PRIORITY_SITES) take(good.find((job) => job.site === site));
-  for (const job of good) if (!picks.some((pick) => pick.site === job.site)) take(job);
-  for (const job of good) take(job);
-  return picks;
+  return ranked.filter((job) => job.eligible !== false).slice(0, TOP);
 }
 
 const OPEN_TO_ALL = /\b(global|worldwide|anywhere|international)\b/i;

@@ -41,13 +41,14 @@ describe("batchMessage", () => {
     expect(text).toContain(`${"x".repeat(139)}…`);
   });
 
-  it("says plainly when fewer than three jobs reached the minimum score", () => {
-    expect(batchMessage([job], [], 12)).toContain("<b>1 of today's 12 new jobs scored 80+</b>");
+  it("says plainly when there were fewer than three new jobs", () => {
+    expect(batchMessage([job], [], 1)).toContain("<b>Only 1 new job today</b>");
+    expect(batchMessage([job, job], [], 2)).toContain("<b>Only 2 new jobs today</b>");
   });
 
-  it("says so when nothing reached the minimum score, and lists problems", () => {
-    const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 40);
-    expect(text).toContain("No new job scored 80+ today (40 checked).");
+  it("says so when there were no new jobs, and lists problems", () => {
+    const text = batchMessage([], ["acme (lever): Board not found. Check the link in Settings."], 0);
+    expect(text).toContain("No new jobs today (0 checked).");
     expect(text).toContain("<b>Problems</b>\n• acme (lever): Board not found.");
   });
 });

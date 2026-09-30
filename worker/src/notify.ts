@@ -1,7 +1,7 @@
 // ROADMAP 5.6: Telegram messages (decided 2026-09-29). Without TELEGRAM_BOT_TOKEN and
 // TELEGRAM_CHAT_ID the message is printed instead, which is how local runs work.
 import { formatSalary } from "@/lib/jobs";
-import { MIN_FIT, TOP, type Ranked } from "./scoring";
+import { TOP, type Ranked } from "./scoring";
 
 // How each source is named to the owner.
 const SITE_NAMES: Record<string, string> = {
@@ -17,16 +17,15 @@ const FIT_LENGTH = 140;
 
 /**
  * The daily message, kept short (owner, 2026-09-30): per job only the site, title, salary, score and
- * one line on why it fits. Says plainly when fewer than TOP (or none) of the `checked` new postings
- * reached MIN_FIT.
+ * one line on why it fits. Fewer than TOP only when fewer new jobs than that were reviewed.
  */
 export function batchMessage(saved: Ranked[], problems: string[], checked: number) {
   const heading =
     saved.length >= TOP
       ? `<b>Today's top ${TOP} jobs</b>`
       : saved.length
-        ? `<b>${saved.length} of today's ${checked} new jobs scored ${MIN_FIT}+</b>`
-        : `<b>No new job scored ${MIN_FIT}+ today (${checked} checked).</b>`;
+        ? `<b>Only ${saved.length} new ${saved.length === 1 ? "job" : "jobs"} today</b>`
+        : `<b>No new jobs today (${checked} checked).</b>`;
   const lines = [heading];
   saved.forEach((job, index) => {
     const salary = formatSalary(job);

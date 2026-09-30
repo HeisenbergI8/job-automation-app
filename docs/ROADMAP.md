@@ -116,9 +116,7 @@ without them.
   never applied to. Ticked after the owner's first run with a JSearch key.
 - [ ] **5.4 Duplicate removal** across sites (same company, role and location).
 - [ ] **5.5 Scoring.** Score each job against the criteria and master CV, keep the reasons, and save the
-  top 3 as `found`: jobs scoring 80 or more (`MIN_FIT`), LinkedIn, JobStreet, Indeed and OnlineJobs.ph first, then
-  other sites, only jobs posted in the last 7 days that the owner can apply for from where they live.
-  If none reach 80, nothing is saved (owner, 2026-09-30; was 50 with a closest-match fallback).
+  top 3 as `found`: the day's 3 highest scores from any site, with no minimum (owner, 2026-09-30), only jobs posted in the last 7 days that the owner can apply for from where they live.
   *Decided:* Claude Code headless (`claude -p`, Sonnet) with the owner's subscription, no paid API.
   Keyword-only scoring when Claude Code is unavailable.
 - [ ] **5.6 Notify the owner** about each new batch and each job marked `needs_manual`.
@@ -156,7 +154,7 @@ Settled on 2026-09-28: ghosting runs as a Vercel cron job (2.5), the master CV i
 (3.2), and tailoring uses Claude Opus 5.5 (4.1).
 
 Settled on 2026-09-29: scoring runs on Claude Code headless with the owner's subscription (Sonnet),
-with a keyword fallback; up to 3 jobs a day scoring 80 or more (5.5). The first
+with a keyword fallback; the 3 highest-scoring jobs each day (5.5). The first
 sources are Greenhouse, Lever and Ashby only, with LinkedIn, Indeed and JobStreet deferred (5.2, 5.3).
 Notifications go to Telegram (5.6). The worker runs at 8:00, 13:00 and 18:00 via launchd, with JSearch on
 the first run of the day only (5.1). OnlineJobs.ph's public job search is read directly (robots.txt allows it,

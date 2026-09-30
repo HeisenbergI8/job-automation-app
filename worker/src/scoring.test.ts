@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import claudeOutput from "../fixtures/claude-output.json";
-import { keywordFit, MAX_ALERT_REVIEWS, MIN_FIT, parseClaudeOutput, pickTop, rank, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
+import { keywordFit, MAX_ALERT_REVIEWS, parseClaudeOutput, pickTop, rank, REVIEW_AGAIN_FROM, rejectedByClaude, type Criteria, type Ranked } from "./scoring";
 import type { Posting } from "./sources";
 
 const criteria: Criteria = {
@@ -120,8 +120,8 @@ describe("rank", () => {
 describe("rejectedByClaude", () => {
   const job = (url: string, score: number, scoredBy: Ranked["scoredBy"]) => ({ ...posting({ url }), score, reasons: [], scoredBy }) as Ranked;
 
-  it("remembers only jobs Claude scored below the minimum", () => {
-    const ranked = [job("good-but-4th", 90, "claude-code"), job("rejected", MIN_FIT - 1, "claude-code"), job("keyword-only", 10, "keywords")];
+  it("remembers only jobs Claude scored too low to review again", () => {
+    const ranked = [job("good-but-4th", REVIEW_AGAIN_FROM, "claude-code"), job("rejected", REVIEW_AGAIN_FROM - 1, "claude-code"), job("keyword-only", 10, "keywords")];
     expect(rejectedByClaude(ranked).map((j) => j.url)).toEqual(["rejected"]);
   });
 });
@@ -129,36 +129,26 @@ describe("rejectedByClaude", () => {
 describe("pickTop", () => {
   const scored = (url: string, score: number) => ({ ...posting({ url }), score, reasons: [], scoredBy: "claude-code" }) as Ranked;
 
-  it("keeps at most three jobs, all at or above the minimum", () => {
-    const ranked = [scored("a", 95), scored("b", 90), scored("c", 85), scored("d", 80)];
+  it("keeps the three highest scores, however low", () => {
+    const ranked = [scored("a", 51), scored("b", 50), scored("c", 49), scored("d", 12)];
     expect(pickTop(ranked).map((job) => job.url)).toEqual(["a", "b", "c"]);
   });
 
-  it("saves fewer than three when too few jobs reach the minimum", () => {
-    expect(pickTop([scored("a", 92), scored("b", MIN_FIT), scored("c", MIN_FIT - 1)]).map((job) => job.url)).toEqual(["a", "b"]);
-  });
-
-  it("picks nothing when no job reaches the minimum", () => {
-    expect(pickTop([scored("a", MIN_FIT - 1), scored("b", 10)])).toEqual([]);
+  it("gives fewer than three only when fewer jobs were reviewed", () => {
+    expect(pickTop([scored("a", 20)]).map((job) => job.url)).toEqual(["a"]);
     expect(pickTop([])).toEqual([]);
   });
 
   const at = (url: string, score: number, site: string) => ({ ...scored(url, score), site }) as Ranked;
 
-  it("ranks OnlineJobs.ph after the other three priority sites", () => {
-    // Best first, as rank returns them: the company-page job outscores the OnlineJobs.ph one.
-    const ranked = [at("careers", 95, "greenhouse"), at("online", 90, "onlinejobs"), at("indeed", 82, "indeed")];
-    expect(pickTop(ranked).map((job) => job.url)).toEqual(["indeed", "online", "careers"]);
+  it("goes by score alone, even when every pick is from one site", () => {
+    const ranked = [at("indeed1", 70, "indeed"), at("indeed2", 68, "indeed"), at("indeed3", 66, "indeed"), at("linkedin", 60, "linkedin")];
+    expect(pickTop(ranked).map((job) => job.url)).toEqual(["indeed1", "indeed2", "indeed3"]);
   });
 
-  it("puts LinkedIn, JobStreet and Indeed first, in that order, even above a higher score elsewhere", () => {
-    const ranked = [at("careers", 95, "greenhouse"), at("indeed", 90, "indeed"), at("linkedin", 85, "linkedin"), at("jobstreet", 81, "jobstreet")];
-    expect(pickTop(ranked).map((job) => job.url)).toEqual(["linkedin", "jobstreet", "indeed"]);
-  });
-
-  it("fills with other sites, one per site first, when the priority sites have too few", () => {
-    const ranked = [at("gh1", 95, "greenhouse"), at("gh2", 90, "greenhouse"), at("glass", 85, "glassdoor"), at("linkedin", 80, "linkedin")];
-    expect(pickTop(ranked).map((job) => job.url)).toEqual(["linkedin", "gh1", "glass"]);
+  it("doesn't put a priority site ahead of a higher score elsewhere", () => {
+    const ranked = [at("careers", 95, "greenhouse"), at("online", 90, "onlinejobs"), at("linkedin", 60, "linkedin"), at("indeed", 55, "indeed")];
+    expect(pickTop(ranked).map((job) => job.url)).toEqual(["careers", "online", "linkedin"]);
   });
 });
 
