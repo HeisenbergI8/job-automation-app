@@ -5,7 +5,7 @@ import { MIN_FIT, TOP, type Ranked } from "./scoring";
 
 // How each source is named to the owner.
 const SITE_NAMES: Record<string, string> = {
-  linkedin: "LinkedIn", jobstreet: "JobStreet", indeed: "Indeed", glassdoor: "Glassdoor",
+  linkedin: "LinkedIn", jobstreet: "JobStreet", indeed: "Indeed", onlinejobs: "OnlineJobs.ph", glassdoor: "Glassdoor",
   greenhouse: "company careers page", lever: "company careers page", ashby: "company careers page",
 };
 

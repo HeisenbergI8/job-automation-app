@@ -148,6 +148,11 @@ describe("pickTop", () => {
 
   const at = (url: string, score: number, site: string) => ({ ...scored(url, score), site }) as Ranked;
 
+  it("ranks OnlineJobs.ph after the other three priority sites", () => {
+    const ranked = [at("online", 90, "onlinejobs"), at("careers", 95, "greenhouse"), at("indeed", 60, "indeed")];
+    expect(pickTop(ranked).map((job) => job.url)).toEqual(["indeed", "online", "careers"]);
+  });
+
   it("puts LinkedIn, JobStreet and Indeed first, in that order, even above a higher score elsewhere", () => {
     const ranked = [at("careers", 95, "greenhouse"), at("indeed", 70, "indeed"), at("linkedin", 60, "linkedin"), at("jobstreet", 55, "jobstreet")];
     expect(pickTop(ranked).map((job) => job.url)).toEqual(["linkedin", "jobstreet", "indeed"]);

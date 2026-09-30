@@ -12,6 +12,7 @@ export const ALERT_SENDERS = [
   { site: "linkedin", from: "linkedin.com", name: "LinkedIn" },
   { site: "jobstreet", from: "jobstreet", name: "JobStreet" },
   { site: "indeed", from: "indeed.com", name: "Indeed" },
+  { site: "onlinejobs", from: "onlinejobs.ph", name: "OnlineJobs.ph" },
 ] as const;
 
 /** Alert emails from the last two days are read (each only once; see processed_emails). */

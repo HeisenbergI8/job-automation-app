@@ -35,8 +35,8 @@ export function rejectedByClaude(ranked: Ranked[]) {
   return ranked.filter((job) => job.scoredBy === "claude-code" && (job.score < MIN_FIT || job.eligible === false));
 }
 
-/** Owner's order of preference (2026-09-29). Other sites and company career pages fill the rest. */
-export const PRIORITY_SITES = ["linkedin", "jobstreet", "indeed"];
+/** Owner's order of preference (2026-09-29; OnlineJobs.ph added 2026-09-30). Other sites and company career pages fill the rest. */
+export const PRIORITY_SITES = ["linkedin", "jobstreet", "indeed", "onlinejobs"];
 
 /**
  * The day's picks from `ranked` (best first), at most TOP:

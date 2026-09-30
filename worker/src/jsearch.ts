@@ -45,7 +45,7 @@ type JSearchJob = {
 
 /** "LinkedIn" → "linkedin", "JobStreet Philippines" → "jobstreet": the names stage 6 blocks auto-applying on. */
 function siteName(publisher: string) {
-  const known = ["linkedin", "indeed", "jobstreet", "glassdoor"].find((site) => publisher.toLowerCase().includes(site));
+  const known = ["linkedin", "indeed", "jobstreet", "onlinejobs", "glassdoor"].find((site) => publisher.toLowerCase().includes(site));
   return known ?? publisher.toLowerCase().trim();
 }
 
