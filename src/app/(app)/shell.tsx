@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
+import { useFormStatus } from "react-dom";
 import { BriefcaseBusiness, ChartColumn, LayoutDashboard, LogOut, Moon, Plus, Settings, Sun } from "lucide-react";
 import { logOut } from "@/app/login/actions";
 import { isDark, setDark } from "@/lib/theme";
@@ -124,6 +125,53 @@ function ThemeToggle() {
   );
 }
 
+function LogOutSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className="btn-primary">
+      {pending ? "Logging out…" : "Log out"}
+    </button>
+  );
+}
+
+/** Log out behind a confirmation, so a stray tap on the icon does not end the session. */
+function LogOutButton() {
+  const dialog = useRef<HTMLDialogElement>(null);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => dialog.current?.showModal()}
+        aria-label="Log out"
+        title="Log out"
+        className="flex size-10 cursor-pointer items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-muted"
+      >
+        <LogOut className="size-[18px]" aria-hidden="true" />
+      </button>
+      <dialog
+        ref={dialog}
+        aria-labelledby="logout-title"
+        // A click on the backdrop lands on the dialog itself, not its contents.
+        onClick={(event) => event.target === event.currentTarget && dialog.current?.close()}
+        className="card m-auto w-[calc(100%-2rem)] max-w-sm p-0 text-foreground shadow-float backdrop:bg-black/40 backdrop:backdrop-blur-sm sm:p-0"
+      >
+        <div className="p-5 sm:p-6">
+          <h2 id="logout-title" className="text-base font-semibold">
+            Log out?
+          </h2>
+          <p className="mt-1.5 text-sm text-muted">You will need to sign in again to use the app.</p>
+          <form action={logOut} className="mt-5 flex justify-end gap-2">
+            <button type="button" onClick={() => dialog.current?.close()} className="btn" autoFocus>
+              Cancel
+            </button>
+            <LogOutSubmit />
+          </form>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
 /** The bar across the top: the mark on phones (where there is no sidebar), then theme, log out, add. */
 export function TopBar() {
   return (
@@ -135,15 +183,7 @@ export function TopBar() {
         </Link>
         <div className="ml-auto flex items-center gap-1">
           <ThemeToggle />
-          <form action={logOut}>
-            <button
-              aria-label="Log out"
-              title="Log out"
-              className="flex size-10 cursor-pointer items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-muted"
-            >
-              <LogOut className="size-[18px]" aria-hidden="true" />
-            </button>
-          </form>
+          <LogOutButton />
           <Link href="/jobs/new" className="btn-primary ml-2 hidden md:inline-flex">
             <Plus className="size-4" aria-hidden="true" />
             Add job
