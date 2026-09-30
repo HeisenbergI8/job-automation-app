@@ -29,6 +29,27 @@ export function formatSalary(job: Pick<Job, "salary_min" | "salary_max" | "salar
   return currency ? `${currency} ${range}` : range;
 }
 
+// The owner is in the Philippines. Times are shown in their clock, not the server's: Vercel renders
+// in UTC, which would put a 10:30 PM find at 2:30 PM.
+export const OWNER_TIME_ZONE = "Asia/Manila";
+
+/**
+ * When a job was found, to the minute: "Today, 10:30 PM", "Yesterday, 9:05 AM", "Sep 28, 10:30 PM",
+ * with the year only when it isn't this year. Takes a timestamp such as jobs.created_at.
+ */
+export function formatFoundAt(value: string, now = new Date()) {
+  const zone = { timeZone: OWNER_TIME_ZONE };
+  const day = (date: Date) => date.toLocaleDateString("en-CA", zone);
+  const found = new Date(value);
+  const time = found.toLocaleTimeString("en-US", { ...zone, hour: "numeric", minute: "2-digit" });
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  if (day(found) === day(now)) return `Today, ${time}`;
+  if (day(found) === day(yesterday)) return `Yesterday, ${time}`;
+  const sameYear = day(found).slice(0, 4) === day(now).slice(0, 4);
+  const date = found.toLocaleDateString("en-US", { ...zone, month: "short", day: "numeric", ...(!sameYear && { year: "numeric" }) });
+  return `${date}, ${time}`;
+}
+
 export function formatDate(value: string | null) {
   if (!value) return "—";
   // Date-only values are calendar dates; format them without shifting through a timezone.

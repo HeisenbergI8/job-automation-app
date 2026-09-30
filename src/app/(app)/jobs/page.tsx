@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDate, formatSalary, JOB_STATUSES, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
+import { formatDate, formatFoundAt, formatSalary, JOB_STATUSES, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
 import { requireOwner } from "@/lib/supabase/server";
 import { CompanyMark } from "./company-mark";
 import { StatusBadge } from "./status-badge";
@@ -7,8 +7,9 @@ import { StatusBadge } from "./status-badge";
 const SORTS = {
   applied_desc: { column: "date_applied", ascending: false, label: "Applied, newest" },
   applied_asc: { column: "date_applied", ascending: true, label: "Applied, oldest" },
-  found_desc: { column: "date_found", ascending: false, label: "Found, newest" },
-  found_asc: { column: "date_found", ascending: true, label: "Found, oldest" },
+  // created_at is the moment a job was found or added; date_found holds only the day.
+  found_desc: { column: "created_at", ascending: false, label: "Found, newest" },
+  found_asc: { column: "created_at", ascending: true, label: "Found, oldest" },
 } as const;
 
 export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
@@ -23,9 +24,9 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   const supabase = await requireOwner();
   let query = supabase
     .from("jobs")
-    .select("id, status, company, role, site, date_found, date_applied, salary_min, salary_max, salary_currency, salary_raw")
+    .select("id, status, company, role, site, created_at, date_applied, salary_min, salary_max, salary_currency, salary_raw")
     .order(sort.column, { ascending: sort.ascending, nullsFirst: false })
-    .order("date_found", { ascending: false });
+    .order("created_at", { ascending: false });
   if (status) query = query.eq("status", status);
   if (site) query = query.eq("site", site);
 
@@ -84,6 +85,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
               <th>Company</th>
               <th>Role</th>
               <th>Site</th>
+              <th>Found</th>
               <th>Applied</th>
               <th>Salary</th>
             </tr>
@@ -98,15 +100,19 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
                     <span className="min-w-40">{job.company}</span>
                   </Link>
                 </td>
-                <td>{job.role}</td>
+                <td className="min-w-44">{job.role}</td>
                 <td className="text-muted">{job.site}</td>
+                <td className="whitespace-nowrap">{formatFoundAt(job.created_at)}</td>
                 <td className="whitespace-nowrap">{formatDate(job.date_applied)}</td>
-                <td className="whitespace-nowrap">{formatSalary(job)}</td>
+                <td>
+                  {/* Truncation needs a block inside the cell; "as written" salaries can run long. */}
+                  <span className="block max-w-36 truncate" title={formatSalary(job)}>{formatSalary(job)}</span>
+                </td>
               </tr>
             ))}
             {jobs.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-muted">No jobs match these filters.</td>
+                <td colSpan={7} className="py-8 text-center text-muted">No jobs match these filters.</td>
               </tr>
             )}
           </tbody>

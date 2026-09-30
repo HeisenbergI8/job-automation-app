@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { formatDate, formatSalary, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
+import { formatDate, formatFoundAt, formatSalary, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
 import { cvText, parseMasterCv } from "@/lib/master-cv";
 import { requireOwner } from "@/lib/supabase/server";
 import { keywordScore } from "@/lib/tailoring/ats";
@@ -59,7 +59,7 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
     ["Site", job.site],
     ["Location", job.location ?? "—"],
     ["Salary", formatSalary(job)],
-    ["Found", formatDate(job.date_found)],
+    ["Found", formatFoundAt(job.created_at)],
     ["Applied", formatDate(job.date_applied)],
     ["Apply method", job.apply_method ?? "—"],
     ["Fit score", job.fit_score != null ? `${job.fit_score}/100` : "—"],
