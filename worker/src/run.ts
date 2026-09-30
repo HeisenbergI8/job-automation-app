@@ -1,5 +1,5 @@
 // ROADMAP stage 5: the daily finder. Reads the company career pages in Settings and, with a JSearch key,
-// LinkedIn/Indeed/JobStreet via JSearch; skips jobs already saved or already scored; removes duplicates,
+// LinkedIn/Indeed/JobStreet via JSearch, OnlineJobs.ph's job search and the owner's job-alert emails; skips jobs already saved or already scored; removes duplicates,
 // scores, saves up to 3 jobs scoring MIN_FIT or more as `found`, logs the run in worker_runs and tells the owner on Telegram.
 //   npm start        hosted project (worker/.env); what the daily schedule runs
 //   npm run dev      local stack (worker/.env.local)
@@ -98,11 +98,11 @@ async function findJobs(errors: string[]) {
 
   const fromJSearch = postings.length - fromCareerPages;
 
-  // OnlineJobs.ph: its public job search, one search per target role (it sends no alert emails).
+  // OnlineJobs.ph: its public job search, one search per target role (its alert emails are read below too).
   const onlineJobs = await searchOnlineJobs(settings.data.target_roles, errors);
   postings.push(...onlineJobs);
 
-  // The owner's own LinkedIn, JobStreet and Indeed job-alert emails, when Gmail is set up. Each email
+  // The owner's own LinkedIn, JobStreet, Indeed and OnlineJobs.ph job-alert emails, when Gmail is set up. Each email
   // is read once; it's marked as read (processed_emails) after the day's picks are saved.
   let alertEmails: AlertEmail[] = [];
   if (process.env.GMAIL_ADDRESS?.trim() && process.env.GMAIL_APP_PASSWORD?.trim()) {

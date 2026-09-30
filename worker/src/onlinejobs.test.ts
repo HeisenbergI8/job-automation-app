@@ -21,6 +21,7 @@ describe("parseOnlineJobsSearch (real results page, recorded 2026-09-30)", () =>
       salary_raw: null,
     });
     expect(jobs[0].description).toContain("Remote (Philippines-based applicants only)");
+    for (const job of jobs) expect(job.description).not.toMatch(/target=|See More|jobseekers\/job|[<>]/);
     expect(jobs[1]).toMatchObject({
       company: "Tidewell Media",
       role: "AI Agent Engineer (Agent Harnesses / LLM Orchestration) - Full-Time or Part-Time",
@@ -33,10 +34,29 @@ describe("parseOnlineJobsSearch (real results page, recorded 2026-09-30)", () =>
 });
 
 describe("parsePay", () => {
-  it("turns monthly pay into yearly and leaves hourly pay out", () => {
+  const none = { salary_min: null, salary_max: null, salary_currency: null };
+  it("turns monthly and weekly pay into yearly", () => {
     expect(parsePay("PHP 40,000 - PHP 60,000/month")).toEqual({ salary_min: 480_000, salary_max: 720_000, salary_currency: "PHP" });
-    expect(parsePay("$5/hr")).toEqual({ salary_min: null, salary_max: null, salary_currency: null });
-    expect(parsePay("TBD")).toEqual({ salary_min: null, salary_max: null, salary_currency: null });
+    expect(parsePay("₱25k monthly")).toEqual({ salary_min: 300_000, salary_max: null, salary_currency: "PHP" });
+    expect(parsePay("PHP 1,500/week")).toEqual({ salary_min: 78_000, salary_max: null, salary_currency: "PHP" });
+    expect(parsePay("$2000/mo + 13th month")).toEqual({ salary_min: 24_000, salary_max: null, salary_currency: "USD" });
+    expect(parsePay("Up to PHP 30,000/month")).toEqual({ salary_min: null, salary_max: 360_000, salary_currency: "PHP" });
+  });
+
+  it("leaves hourly and unclear pay out", () => {
+    expect(parsePay("$5/hr")).toEqual(none);
+    expect(parsePay("$10 per hour")).toEqual(none);
+    expect(parsePay("$5 to $8 per Hour DOE")).toEqual(none);
+    expect(parsePay("$4-$7hr")).toEqual(none);
+    expect(parsePay("TBD")).toEqual(none);
+    expect(parsePay("1000")).toEqual(none);
+  });
+});
+
+describe("onsite OnlineJobs.ph posts", () => {
+  it("aren't treated as remote", () => {
+    const onsite = html.replace("AI Expert – Data Engineer (Remote | Philippines)", "AI Engineer – Onsite Makati");
+    expect(parseOnlineJobsSearch(onsite)[0].remote).toBe(false);
   });
 });
 

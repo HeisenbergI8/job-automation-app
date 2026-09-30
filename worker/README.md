@@ -12,7 +12,7 @@ Once a day, on your Mac, this:
 It also messages you when a job is marked **Needs manual**.
 
 It reads company career pages (Greenhouse, Lever and Ashby) and, with a free JSearch key (step 6b),
-LinkedIn, Indeed, JobStreet and other job sites. Jobs it has already reviewed are skipped, so each
+LinkedIn, Indeed, JobStreet and other job sites, plus OnlineJobs.ph's job search. Jobs it has already reviewed are skipped, so each
 run looks at new ones.
 
 ## One-time setup
@@ -105,7 +105,7 @@ target roles in the countries you listed, remote only, posted in the last 3 days
 
 Without a key, the finder simply skips this step.
 
-### 6c. Read your LinkedIn, JobStreet and Indeed job alerts (recommended)
+### 6c. Read your LinkedIn, JobStreet, Indeed and OnlineJobs.ph job alerts (recommended)
 
 This gets you the same jobs you'd see on those sites. The finder reads your job-alert emails from Gmail
 (read-only: it never changes, deletes or sends mail) and scores the jobs in them.
@@ -115,6 +115,10 @@ This gets you the same jobs you'd see on those sites. The finder reads your job-
      (daily, email).
    - JobStreet (ph.jobstreet.com): search → **Save search / Get job alerts** (email, daily).
    - Indeed (ph.indeed.com): search → **Get new jobs for this search by email**.
+   - OnlineJobs.ph: **Account → Job Alerts** → add your searches with email on.
+
+   OnlineJobs.ph's job search is also read directly every run (5 searches, 5 seconds apart, as its
+   robots.txt asks). Check their Terms of Service if you want to be sure this is fine.
 2. **Create a Gmail app password**: turn on 2-Step Verification at myaccount.google.com → Security,
    then open https://myaccount.google.com/apppasswords, name it "Job finder" and click **Create**.
 3. Open `worker/.env`: check `GMAIL_ADDRESS` is your Gmail, and paste the 16-letter app password after

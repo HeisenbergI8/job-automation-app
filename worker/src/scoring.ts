@@ -40,7 +40,7 @@ export const PRIORITY_SITES = ["linkedin", "jobstreet", "indeed", "onlinejobs"];
 
 /**
  * The day's picks from `ranked` (best first), at most TOP:
- * 1. the best LinkedIn, JobStreet and Indeed jobs scoring MIN_FIT or more, in that order;
+ * 1. the best LinkedIn, JobStreet, Indeed and OnlineJobs.ph jobs scoring MIN_FIT or more, in that order;
  * 2. then the best from other sites, one per site first, so the picks come from several sites;
  * 3. if nothing reaches MIN_FIT, the single closest match, labelled as below the bar, so the owner
  *    still gets a job every day (owner, 2026-09-29).

@@ -1,4 +1,5 @@
-// Owner's choice (2026-09-29): the jobs the owner sees on LinkedIn, JobStreet and Indeed come from
+// Owner's choice (2026-09-29; OnlineJobs.ph added 2026-09-30): the jobs the owner sees on LinkedIn,
+// JobStreet, Indeed and OnlineJobs.ph come from
 // their own job-alert emails. The finder reads those emails from Gmail (IMAP, read-only, with a Gmail
 // app password), never the sites themselves. Claude Code lists the jobs in each email, and every link
 // must be one that is actually in the email.

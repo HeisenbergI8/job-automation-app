@@ -149,7 +149,8 @@ describe("pickTop", () => {
   const at = (url: string, score: number, site: string) => ({ ...scored(url, score), site }) as Ranked;
 
   it("ranks OnlineJobs.ph after the other three priority sites", () => {
-    const ranked = [at("online", 90, "onlinejobs"), at("careers", 95, "greenhouse"), at("indeed", 60, "indeed")];
+    // Best first, as rank returns them: the company-page job outscores the OnlineJobs.ph one.
+    const ranked = [at("careers", 95, "greenhouse"), at("online", 90, "onlinejobs"), at("indeed", 60, "indeed")];
     expect(pickTop(ranked).map((job) => job.url)).toEqual(["indeed", "online", "careers"]);
   });
 

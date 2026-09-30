@@ -109,14 +109,14 @@ without them.
   - A schedule on the Mac (launchd, 8:00, 13:00 and 18:00 local time; runs on wake if the Mac was asleep).
 - [ ] **5.2 Career-page sources:** Greenhouse, Lever and Ashby public job boards, for the companies
   listed in Settings (`career_boards`). A board that can't be read is shown in red in Settings.
-- [ ] **5.3 Job-board sources, read-only:** LinkedIn, Indeed, JobStreet.
+- [ ] **5.3 Job-board sources, read-only:** LinkedIn, Indeed, JobStreet, OnlineJobs.ph.
   *Built 2026-09-29 (owner request):* read through JSearch (RapidAPI, free plan of 200 requests a month),
   which collects them from Google for Jobs. The finder never visits those sites itself. At most 6
   searches a run (target roles × listed countries, remote, last 3 days). These sites are searched,
   never applied to. Ticked after the owner's first run with a JSearch key.
 - [ ] **5.4 Duplicate removal** across sites (same company, role and location).
 - [ ] **5.5 Scoring.** Score each job against the criteria and master CV, keep the reasons, and save the
-  top 3 as `found`: jobs scoring 50 or more (`MIN_FIT`), LinkedIn, JobStreet and Indeed first, then
+  top 3 as `found`: jobs scoring 50 or more (`MIN_FIT`), LinkedIn, JobStreet, Indeed and OnlineJobs.ph first, then
   other sites, only jobs posted in the last 7 days that the owner can apply for from where they live.
   If none reach 50, the single closest match Claude checked is sent, labelled (owner, 2026-09-29).
   *Decided:* Claude Code headless (`claude -p`, Sonnet) with the owner's subscription, no paid API.
@@ -159,6 +159,7 @@ Settled on 2026-09-29: scoring runs on Claude Code headless with the owner's sub
 with a keyword fallback; up to 3 jobs a day scoring 50 or more, or the closest checked match (5.5). The first
 sources are Greenhouse, Lever and Ashby only, with LinkedIn, Indeed and JobStreet deferred (5.2, 5.3).
 Notifications go to Telegram (5.6). The worker runs at 8:00, 13:00 and 18:00 via launchd, with JSearch on
-the first run of the day only (5.1). The owner's own LinkedIn, JobStreet and Indeed job-alert emails
+the first run of the day only (5.1). OnlineJobs.ph's public job search is read directly (robots.txt allows it,
+crawl delay 5s). The owner's own LinkedIn, JobStreet, Indeed and OnlineJobs.ph job-alert emails
 are read from Gmail (read-only) as a source (5.3). Tailoring moves
 off the paid API to Claude Code as part of stage 6.

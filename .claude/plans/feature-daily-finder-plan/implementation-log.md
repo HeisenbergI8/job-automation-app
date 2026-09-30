@@ -193,3 +193,13 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 - **Live check:** 5 searches in 24s, 137 jobs, 45 from the last 7 days, no errors.
 - The owner also found **Account → Job Alerts** on OnlineJobs.ph, so both sources apply; duplicates are removed by canonical URL.
 - **Gate:** `npm run verify` 97/97.
+
+## Review follow-up for OnlineJobs.ph (auditor 66/100, tester: 2 defects) — 2026-09-30
+
+- **Description leaked markup (tester):** splitting on the link consumed `<a href="/jobseekers/job/`, so every description ended with `<slug>" target="_blank">See More`. The prefix is now restored when pieces are joined, and a trailing "See More" is dropped. A test asserts there is no leftover markup.
+- **Pay misread (tester and auditor):** "$10 per hour" and "$5 to $8 per Hour" were read as monthly. `parsePay` now matches a currency and amount with an optional "-", "–" or "to" range and a `k` suffix; hourly anywhere means no pay; weekly is ×52, yearly ×1, otherwise ×12. "Up to" means a maximum only. 6 more cases are tested.
+- **Onsite posts on OnlineJobs.ph:** `remote` now follows `NOT_REMOTE` on the title, not a hard-coded true.
+- **Weak test (auditor F1):** the "ranks fourth" test now uses best-first input, so it fails without `onlinejobs` in `PRIORITY_SITES`.
+- **Doc drift (auditor F2/F3):** comments no longer say OnlineJobs.ph sends no alerts. The alerts, run and scoring comments, the ROADMAP (5.3, 5.5, Settled) and the README (intro, 6c with the OnlineJobs alert step and a note to check their Terms of Service) now name all four sites.
+- **Still open:** real alert-email senders and link formats (all four sites); OnlineJobs.ph's Terms of Service (the owner was asked). For stage 6, applying on OnlineJobs.ph uses the owner's account, so decide whether it joins the no-auto-apply list.
+- **Gate:** `npm run verify` 99/99.
