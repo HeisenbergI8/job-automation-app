@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { formatDate, formatSalary, JOB_STATUSES, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
 import { requireOwner } from "@/lib/supabase/server";
+import { CompanyMark } from "./company-mark";
 import { StatusBadge } from "./status-badge";
 
 const SORTS = {
@@ -36,13 +37,13 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   const sites = [...new Set(siteRows?.map((row) => row.site))].sort();
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
+    <div className="flex flex-col gap-6">
+      <div>
         <h1 className="page-title">Jobs</h1>
-        <Link href="/jobs/new" className="btn-primary">Add job</Link>
+        <p className="page-subtitle">Every job found or applied to, with where it stands.</p>
       </div>
 
-      <form className="flex flex-wrap items-end gap-3">
+      <form className="card flex flex-wrap items-end gap-3 p-4 sm:p-5">
         <label className="field">
           Status
           <select name="status" defaultValue={status ?? ""}>
@@ -75,7 +76,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
         )}
       </form>
 
-      <div className="card overflow-x-auto p-0">
+      <div className="card overflow-x-auto p-0 sm:p-0">
         <table className="data-table">
           <thead>
             <tr>
@@ -89,13 +90,16 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
           </thead>
           <tbody>
             {jobs.map((job) => (
-              <tr key={job.id} className="hover:bg-surface-muted">
+              <tr key={job.id} className="transition-colors hover:bg-surface-muted/60">
                 <td><StatusBadge status={job.status} /></td>
                 <td className="font-medium">
-                  <Link href={`/jobs/${job.id}`} className="hover:underline">{job.company}</Link>
+                  <Link href={`/jobs/${job.id}`} className="flex items-center gap-3 hover:underline">
+                    <CompanyMark company={job.company} />
+                    <span className="min-w-40">{job.company}</span>
+                  </Link>
                 </td>
                 <td>{job.role}</td>
-                <td>{job.site}</td>
+                <td className="text-muted">{job.site}</td>
                 <td className="whitespace-nowrap">{formatDate(job.date_applied)}</td>
                 <td className="whitespace-nowrap">{formatSalary(job)}</td>
               </tr>

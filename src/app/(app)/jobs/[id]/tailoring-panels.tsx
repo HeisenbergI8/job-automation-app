@@ -59,7 +59,7 @@ export function IntroAdaptation({
   const error = decideState?.error ?? sendState?.error;
 
   return (
-    <div className="rounded-md border border-border p-3 text-sm">
+    <div className="rounded-xl border border-border p-4 text-sm">
       <div className="mb-2 flex justify-between gap-3">
         <span className="text-muted">{adaptation.requirements}</span>
         <span className={`shrink-0 font-medium capitalize ${STATUS_STYLES[adaptation.status]}`}>

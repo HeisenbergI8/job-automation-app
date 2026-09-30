@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { formatDate, formatSalary, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
 import { cvText, parseMasterCv } from "@/lib/master-cv";
 import { requireOwner } from "@/lib/supabase/server";
@@ -66,7 +67,10 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/jobs" className="text-sm text-muted hover:text-foreground">← Jobs</Link>
+        <Link href="/jobs" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground">
+          <ArrowLeft className="size-4" aria-hidden="true" />
+          Jobs
+        </Link>
         <div className="mt-4 flex items-start gap-4">
           <CompanyMark company={job.company} size="lg" />
           <div className="min-w-0 flex-1">
@@ -76,18 +80,19 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
             </div>
             <p className="mt-1 text-muted">
               {job.company} ·{" "}
-              <a href={job.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">
+              <a href={job.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
                 Original posting
+                <ExternalLink className="size-3.5" aria-hidden="true" />
               </a>
             </p>
           </div>
           {job.fit_score != null && (
-            <span className="shrink-0 text-sm font-medium text-accent">
-              <span className="tabular-nums">{job.fit_score}</span> fit
+            <span className="shrink-0 rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-accent">
+              {job.fit_score} fit
             </span>
           )}
         </div>
-        <p className="mt-4 rounded-md border border-accent/25 bg-accent-soft px-4 py-3 text-sm">
+        <p className="mt-4 rounded-2xl bg-accent-soft px-5 py-4 text-sm">
           <span className="font-semibold">Next step: </span>
           {NEXT_STEP[job.status]}
           {job.status === "applied" && job.date_applied && ` (applied ${formatDate(job.date_applied)}, ${job.apply_method ?? "manual"})`}
@@ -101,8 +106,8 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
               {fields.map(([label, value]) => (
                 <div key={label}>
-                  <dt className="text-muted">{label}</dt>
-                  <dd className="font-medium tabular-nums">{value}</dd>
+                  <dt className="text-xs text-muted">{label}</dt>
+                  <dd className="mt-0.5 font-medium tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
@@ -184,7 +189,7 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
           <section className="card">
             <h2 className="section-title">Status</h2>
             {waitingForIntro && (
-              <p className="mb-3 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
+              <p className="mb-3 rounded-xl bg-warn-soft px-3 py-2 text-sm text-warn">
                 Waiting for you to approve the adapted intro. The application can&apos;t be marked applied until then.
               </p>
             )}
@@ -202,7 +207,7 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
                     <span
                       aria-hidden="true"
                       className={`relative flex size-6 shrink-0 items-center justify-center rounded-full ${
-                        current ? "border-2 border-accent bg-surface" : "bg-accent text-accent-foreground"
+                        current ? "border-2 border-accent bg-surface" : "bg-accent-soft text-accent"
                       }`}
                     >
                       {current ? (

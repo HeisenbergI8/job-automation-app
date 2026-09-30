@@ -8,6 +8,8 @@ import {
 } from "@/lib/analytics";
 import { formatDate, STATUS_LABELS } from "@/lib/jobs";
 import { requireOwner } from "@/lib/supabase/server";
+import { Clock, MessagesSquare, Send } from "lucide-react";
+import { StatTile } from "../stat-tile";
 import { BarList, ColumnChart, StripPlot, TableView } from "./charts";
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
@@ -33,9 +35,12 @@ export default async function AnalyticsPage() {
 
   if (overall.total === 0) {
     return (
-      <div className="flex flex-col gap-4">
-        <h1 className="page-title">Analytics</h1>
-        <p className="text-muted">Nothing to chart yet. Numbers appear once a job is marked applied.</p>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="page-title">Analytics</h1>
+          <p className="page-subtitle">How applications turn into replies.</p>
+        </div>
+        <p className="card text-sm text-muted">Nothing to chart yet. Numbers appear once a job is marked applied.</p>
       </div>
     );
   }
@@ -50,23 +55,27 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="page-title">Analytics</h1>
+      <div>
+        <h1 className="page-title">Analytics</h1>
+        <p className="page-subtitle">How applications turn into replies.</p>
+      </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="card">
-          <div className="section-title mb-2">Applications</div>
-          <div className="stat-value">{overall.total}</div>
-        </div>
-        <div className="card">
-          <div className="section-title mb-2">Response rate</div>
-          <div className="stat-value">{percent(overall.rate)}</div>
-          <div className="mt-1 text-xs text-muted">{overall.replied} of {overall.total} got any reply, rejections included</div>
-        </div>
-        <div className="card">
-          <div className="section-title mb-2">Average days to first reply</div>
-          <div className="stat-value">{averageDays != null ? averageDays.toFixed(1) : "—"}</div>
-          <div className="mt-1 text-xs text-muted">across {replyDays.length} replies</div>
-        </div>
+      <section className="grid gap-3 sm:grid-cols-3 lg:gap-4">
+        <StatTile icon={Send} tint="indigo" label="Applications" value={overall.total} />
+        <StatTile
+          icon={MessagesSquare}
+          tint="mint"
+          label="Response rate"
+          value={percent(overall.rate)}
+          note={`${overall.replied} of ${overall.total} got any reply, rejections included`}
+        />
+        <StatTile
+          icon={Clock}
+          tint="amber"
+          label="Average days to first reply"
+          value={averageDays != null ? averageDays.toFixed(1) : "—"}
+          note={`across ${replyDays.length} replies`}
+        />
       </section>
 
       <section className="card">

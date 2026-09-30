@@ -1,20 +1,83 @@
 @import "tailwindcss";
 
-/* "A quiet ledger": warm paper, hairline borders, near-black ink, one forest-green accent.
-   Tokens come from docs/DESIGN-PROMPT.md. */
+/* Dark mode follows a `dark` class on <html>, set before first paint by THEME_SCRIPT (lib/theme.ts),
+   so the toggle in the top bar can override the device. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Navy brand on an off-white page, with white cards lifted by a soft shadow and a dark sidebar.
+   The token names predate this look; only their values changed. */
 :root {
-  --background: #f5f3ee;
-  --foreground: #1a1a17;
-  --surface: #fbfaf7;
-  --surface-muted: #efece5;
-  --border: #e3e0d8;
-  --muted: #77746c;
-  --accent: #1f5f4a;
-  --accent-foreground: #ffffff;
-  --accent-soft: #e3eee8;
-  --danger: #b4412f;
-  --warn: #8a5a12;
-  --warn-soft: #f6ead2;
+  --background: oklch(0.977 0.003 260);
+  --foreground: oklch(0.155 0.012 260);
+  /* Cards are pure white on the off-white page: that one step is what makes them read as objects. */
+  --surface: oklch(1 0 0);
+  --surface-muted: oklch(0.965 0.005 260);
+  --border: oklch(0.925 0.006 260);
+  --muted: oklch(0.545 0.018 260);
+  --accent: oklch(0.393 0.134 260.2);
+  --accent-strong: oklch(0.327 0.134 260.2);
+  --accent-foreground: oklch(0.985 0 0);
+  --accent-soft: color-mix(in oklab, var(--accent) 8%, transparent);
+  /* The fill behind white text (the hero tile, the logo square). Stays deep in dark mode, where
+     the accent lightens to read as text. */
+  --hero: var(--accent);
+  --danger: oklch(0.55 0.2 27);
+  --danger-soft: color-mix(in oklab, var(--danger) 10%, transparent);
+  --warn: oklch(0.52 0.12 70);
+  --warn-soft: color-mix(in oklab, oklch(0.8 0.15 80) 22%, transparent);
+  --good: oklch(0.52 0.14 150);
+  --good-soft: color-mix(in oklab, var(--good) 12%, transparent);
+
+  /* The sidebar is dark in both themes: navigation recedes, the cards beside it come forward. */
+  --sidebar: oklch(0.216 0.042 260);
+  --sidebar-foreground: oklch(0.93 0.012 260);
+  --sidebar-primary: oklch(0.535 0.15 260.2);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+
+  /* Decorative tints for icon chips and name avatars. They never carry meaning. */
+  --chip-indigo: oklch(0.478 0.19 276.3);
+  --chip-sky: oklch(0.492 0.125 240);
+  --chip-mint: oklch(0.455 0.105 165);
+  --chip-violet: oklch(0.478 0.17 300);
+  --chip-amber: oklch(0.505 0.115 70);
+
+  /* Wide, soft, brand-tinted shadows: a card at rest, under the pointer, and floating. */
+  --elevation-rest: 0 1px 2px -1px oklch(0.2 0.03 260 / 6%), 0 2px 8px -2px oklch(0.2 0.03 260 / 6%);
+  --elevation-hover: 0 2px 4px -2px oklch(0.2 0.03 260 / 8%), 0 8px 20px -4px oklch(0.2 0.03 260 / 10%);
+  --elevation-float: 0 8px 16px -6px oklch(0.2 0.03 260 / 12%), 0 20px 40px -12px oklch(0.2 0.03 260 / 16%);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.162 0.016 260);
+  --foreground: oklch(0.975 0.004 260);
+  --surface: oklch(0.212 0.021 260);
+  --surface-muted: oklch(0.272 0.023 260);
+  --border: oklch(1 0 0 / 10%);
+  --muted: oklch(0.715 0.02 260);
+  --accent: oklch(0.672 0.13 260.2);
+  --accent-strong: oklch(0.755 0.11 260.2);
+  --accent-foreground: oklch(0.16 0.02 260);
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --hero: oklch(0.4 0.13 262);
+  --danger: oklch(0.704 0.191 22.216);
+  --warn: oklch(0.82 0.12 75);
+  --warn-soft: color-mix(in oklab, oklch(0.8 0.15 80) 14%, transparent);
+  --good: oklch(0.75 0.15 150);
+
+  --sidebar: oklch(0.178 0.032 260);
+  --sidebar-primary: var(--accent);
+
+  --chip-indigo: oklch(0.74 0.13 276.3);
+  --chip-sky: oklch(0.76 0.1 240);
+  --chip-mint: oklch(0.77 0.11 165);
+  --chip-violet: oklch(0.76 0.13 300);
+  --chip-amber: oklch(0.8 0.11 70);
+
+  /* A shadow can't be seen on a dark page; depth comes from the card being lighter. */
+  --elevation-rest: 0 1px 0 0 oklch(1 0 0 / 4%) inset;
+  --elevation-hover: 0 1px 0 0 oklch(1 0 0 / 7%) inset;
+  --elevation-float: 0 12px 32px -8px oklch(0 0 0 / 60%);
 }
 
 @theme inline {
@@ -25,35 +88,59 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
+  --color-hero: var(--hero);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-chip-indigo: var(--chip-indigo);
+  --color-chip-sky: var(--chip-sky);
+  --color-chip-mint: var(--chip-mint);
+  --color-chip-violet: var(--chip-violet);
+  --color-chip-amber: var(--chip-amber);
+  --shadow-rest: var(--elevation-rest);
+  --shadow-hover: var(--elevation-hover);
+  --shadow-float: var(--elevation-float);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #121210;
-    --foreground: #edebe6;
-    --surface: #1b1b19;
-    --surface-muted: #232320;
-    --border: #2a2a27;
-    --muted: #8e8b83;
-    --accent: #5bb894;
-    --accent-foreground: #0f1f18;
-    --accent-soft: #1d2f27;
-    --danger: #e0806f;
-    --warn: #e0b56a;
-    --warn-soft: #2e2618;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+}
+
+@layer base {
+  /* Every select draws its own chevron, inset from the edge, in a colour per theme. */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23525f70' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 0.75rem;
+    padding-right: 2.25rem !important;
+  }
+  .dark select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3adbb' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {
@@ -64,38 +151,44 @@ body {
   .field select,
   .field textarea,
   .input {
-    @apply rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal outline-none transition-colors placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/15;
+    @apply rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm font-normal outline-none transition-[border-color,box-shadow] placeholder:text-muted/70 focus:border-accent focus:ring-3 focus:ring-accent/20;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-3.5 py-2 text-sm font-medium transition-colors hover:bg-surface-muted disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-medium shadow-rest transition-colors hover:bg-surface-muted active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-md bg-accent px-3.5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground shadow-rest transition-[background-color,transform] hover:bg-accent-strong active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
   }
   .card {
-    @apply rounded-md border border-border bg-surface p-5;
+    @apply rounded-2xl bg-surface p-5 shadow-rest ring-1 ring-border/70 sm:p-6;
+  }
+  /* A card that is a link: lifts under the pointer. */
+  .card-link {
+    @apply transition-[box-shadow,transform] duration-200 hover:-translate-y-px hover:shadow-hover;
   }
   .page-title {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-bold tracking-tight sm:text-3xl;
   }
-  /* Small uppercase label with letter spacing, used for section headings and stat tiles. */
+  .page-subtitle {
+    @apply mt-1 text-sm text-muted sm:text-base;
+  }
   .section-title {
-    @apply mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
+    @apply mb-3 text-base font-semibold tracking-tight sm:text-lg;
   }
   .stat-value {
-    @apply font-mono text-3xl font-medium tabular-nums tracking-tight;
+    @apply text-2xl font-semibold tracking-tight lg:text-3xl;
   }
   .chip {
-    @apply inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs text-foreground/80;
+    @apply inline-flex items-center rounded-lg bg-surface-muted px-2.5 py-1 text-xs text-foreground/80;
   }
   .data-table {
     @apply w-full text-left text-sm;
   }
   .data-table th {
-    @apply border-b border-border px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
+    @apply border-b border-border bg-surface-muted/50 px-4 py-3 text-xs font-medium text-muted;
   }
   .data-table td {
-    @apply border-b border-border px-4 py-3;
+    @apply border-b border-border px-4 py-3.5;
   }
   .data-table tbody tr:last-child td {
     @apply border-b-0;

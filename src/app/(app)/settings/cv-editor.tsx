@@ -33,7 +33,7 @@ function Entries<T>({
     <fieldset className="flex flex-col gap-3">
       <legend className="mb-2 text-sm font-semibold">{label}</legend>
       {items.map((item, index) => (
-        <div key={index} className="rounded-md border border-border p-3">
+        <div key={index} className="rounded-xl border border-border p-4">
           {render(item, (patch) => update(index, patch))}
           <div className="mt-2 flex gap-3 text-xs">
             {index > 0 && (

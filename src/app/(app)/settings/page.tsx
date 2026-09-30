@@ -16,7 +16,10 @@ export default async function SettingsPage() {
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="page-title">Settings</h1>
+      <div>
+        <h1 className="page-title">Settings</h1>
+        <p className="page-subtitle">What the daily finder looks for, and what tailoring works from.</p>
+      </div>
 
       <section className="card">
         <h2 className="section-title">Job criteria</h2>

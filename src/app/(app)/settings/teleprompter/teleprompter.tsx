@@ -63,7 +63,7 @@ export function Teleprompter({ script }: { script: string }) {
       </div>
       <div
         ref={viewport}
-        className="relative h-[70vh] overflow-y-auto rounded-lg bg-black px-8 text-center text-white [scrollbar-width:none]"
+        className="relative h-[70vh] overflow-y-auto rounded-2xl bg-black px-8 text-center text-white [scrollbar-width:none]"
       >
         {/* Padding lets the first and last lines scroll through the reading line in the middle. */}
         <p className="whitespace-pre-wrap py-[35vh] font-medium leading-snug" style={{ fontSize }}>

@@ -9,7 +9,7 @@ function Tooltip({ children, align = "center" }: { children: ReactNode; align?: 
   return (
     <span
       role="tooltip"
-      className={`pointer-events-none absolute bottom-full z-10 mb-2 ${TOOLTIP_ALIGN[align]} whitespace-nowrap rounded-md border border-border bg-surface px-2 py-1 text-xs opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus:opacity-100`}
+      className={`pointer-events-none absolute bottom-full z-10 mb-2 ${TOOLTIP_ALIGN[align]} whitespace-nowrap rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs opacity-0 shadow-float transition-opacity group-hover:opacity-100 group-focus:opacity-100`}
     >
       {children}
     </span>
@@ -50,7 +50,7 @@ export function ColumnChart({ data }: { data: { label: string; value: number; to
           {data.map((point, index) => (
             <div key={point.label} tabIndex={0} className="group relative flex h-full flex-1 items-end justify-center outline-none">
               <div
-                className="w-full max-w-12 rounded-t bg-accent group-hover:opacity-80 group-focus:opacity-80"
+                className="w-full max-w-12 rounded-t-md bg-accent group-hover:opacity-80 group-focus:opacity-80"
                 style={{ height: `${(point.value / max) * 100}%` }}
               />
               <Tooltip align={index < data.length * 0.3 ? "start" : index >= data.length * 0.7 ? "end" : "center"}>{point.tooltip}</Tooltip>
@@ -121,9 +121,9 @@ export function BarList({
       {data.map((row) => (
         <li key={row.label} tabIndex={0} className="group relative grid grid-cols-[7rem_1fr_6rem] items-center gap-3 outline-none">
           <span className="truncate">{row.label}</span>
-          <span className="h-3 rounded-r bg-surface-muted">
+          <span className="h-3 rounded-full bg-surface-muted">
             <span
-              className="block h-full rounded-r bg-accent group-hover:opacity-80 group-focus:opacity-80"
+              className="block h-full rounded-full bg-accent group-hover:opacity-80 group-focus:opacity-80"
               style={{ width: `${max ? (row.value / max) * 100 : 0}%` }}
             />
           </span>
