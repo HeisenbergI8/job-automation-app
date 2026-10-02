@@ -1,7 +1,7 @@
 // Owner's rule (2026-09-30): a job reaches the owner only after Claude has read its full posting and
 // scored it PASS_MARK or more. Career pages, OnlineJobs.ph and JSearch searches carry the full
 // posting already. A Gmail alert carries a title and a line or two, so before one can be picked its
-// full posting is looked up on JSearch (the finder never opens LinkedIn or JobStreet itself) and
+// full posting is looked up on JSearch (the finder doesn't open LinkedIn or JobStreet for this) and
 // Claude scores it again from that. One not found there is never sent.
 import { TOP, type Ranked, type Scorer } from "./scoring";
 

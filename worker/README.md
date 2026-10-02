@@ -95,8 +95,8 @@ its next run.
 
 The finder can also look at LinkedIn, Indeed, JobStreet, Glassdoor and other job sites through
 **JSearch**, a job-search service with a free plan (200 searches a month, no credit card). The finder
-never visits those sites itself, so nothing can get blocked. It makes at most 6 searches a run: your
-target roles in the countries you listed, remote only, posted in the last 3 days.
+never visits those sites itself through JSearch, so nothing can get blocked. It makes at most 3 searches
+a day: your target roles in the countries you listed, remote only, posted in the last 3 days.
 
 1. Go to https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch and sign up (Google sign-in works).
 2. Click **Subscribe to Test** (or **Pricing**) and choose the free **Basic** plan.
@@ -104,33 +104,6 @@ target roles in the countries you listed, remote only, posted in the last 3 days
 4. Open `worker/.env` and paste it after `JSEARCH_API_KEY=`. Save.
 
 Without a key, the finder simply skips this step.
-
-### 6d. The finder's own job search (no setup; optional extras)
-
-Besides JSearch, the finder has its own search, a Python script (`worker/jobsearch/jobsearch.py`)
-with no monthly limit. On every run it searches your target roles (up to 6 role-and-country
-combinations, rotating by day) on these free job sites:
-
-- **Remotive, RemoteOK, Himalayas and Jobicy**: remote job boards. Nothing to set up. Jobs that are
-  only open to other countries ("USA only", "Europe") are left out.
-- **Jooble** (optional, free key): collects jobs from many local boards, including JobStreet.
-  Request a key at https://jooble.org/api/about, then paste it after `JOOBLE_API_KEY=` in `worker/.env`.
-
-It needs Python 3, which macOS asks to install the first time you type `python3` in Terminal.
-
-**LinkedIn, Indeed and Glassdoor directly (optional, off by default).** The script can also read
-these sites itself through the `python-jobspy` library. This breaks those sites' terms of use, and
-they can block your Mac's internet address for a while (LinkedIn does this quickly). Your job alerts
-(6c) are the safer way to get those jobs. If you still want it:
-
-    pip3 install python-jobspy
-
-then set `SCRAPE_JOB_SITES=true` in `worker/.env`. It needs Python 3.10 or newer (`python3 --version`).
-If yours is older, install Python from python.org or Homebrew and set `PYTHON_BIN` to its path.
-
-To try the search on its own:
-
-    python3 worker/jobsearch/jobsearch.py "AI Engineer" --country ph --remote
 
 ### 6c. Read your LinkedIn, JobStreet, Indeed and OnlineJobs.ph job alerts (recommended)
 
@@ -154,6 +127,34 @@ This gets you the same jobs you'd see on those sites. The finder reads your job-
    `GMAIL_APP_PASSWORD=`. Save.
 
 Each alert email is read once. To stop, delete the app password in your Google account.
+
+### 6d. The finder's own job search (no setup; optional extras)
+
+Besides JSearch, the finder has its own search, a Python script (`worker/jobsearch/jobsearch.py`)
+with no monthly limit. On every run it searches your target roles (up to 6 role-and-country
+combinations, rotating by day) on these free job sites:
+
+- **Remotive, RemoteOK, Himalayas and Jobicy**: remote job boards. Nothing to set up. Jobs that are
+  only open to other countries ("USA only", "Europe") are left out.
+- **Jooble** (optional, free key): collects jobs from many local boards, including JobStreet.
+  Request a key at https://jooble.org/api/about, then paste it after `JOOBLE_API_KEY=` in `worker/.env`.
+
+It needs Python 3, which macOS asks to install the first time you type `python3` in Terminal.
+
+**LinkedIn, Indeed and Glassdoor directly (optional, off by default).** The script can also read
+these sites itself through the `python-jobspy` library. This breaks those sites' terms of use, and
+they can block your Mac's internet address for a while (LinkedIn does this quickly). Your job alerts
+(6c) are the safer way to get those jobs. If you still want it:
+
+    pip3 install python-jobspy
+
+then set `SCRAPE_JOB_SITES=true` in `worker/.env`. It then runs on every run, `npm run dry-run`
+included. It needs Python 3.10 or newer (`python3 --version`).
+If yours is older, install Python from python.org or Homebrew and set `PYTHON_BIN` to its path.
+
+To try the search on its own:
+
+    python3 worker/jobsearch/jobsearch.py "AI Engineer" --country ph --remote
 
 ### 7. Try it
 

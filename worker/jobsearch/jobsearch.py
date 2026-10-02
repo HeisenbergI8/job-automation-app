@@ -8,7 +8,7 @@ That breaks those sites' terms and can get the Mac's IP blocked, so it is off un
 it on (see worker/README.md).
 
 Prints {"jobs": [...], "errors": [...]} as JSON. Each job has the worker's Posting fields
-(worker/src/sources.ts), so worker/src/jobsearch.ts can pass them on as they are.
+(worker/src/sources.ts), so worker/src/ownsearch.ts can pass them on as they are.
 
     python3 jobsearch.py "AI Engineer" --country ph --remote --days 3
 

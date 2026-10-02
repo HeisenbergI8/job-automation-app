@@ -111,9 +111,14 @@ without them.
   listed in Settings (`career_boards`). A board that can't be read is shown in red in Settings.
 - [ ] **5.3 Job-board sources, read-only:** LinkedIn, Indeed, JobStreet, OnlineJobs.ph.
   *Built 2026-09-29 (owner request):* read through JSearch (RapidAPI, free plan of 200 requests a month),
-  which collects them from Google for Jobs. The finder never visits those sites itself. At most 6
-  searches a run (target roles × listed countries, remote, last 3 days). These sites are searched,
+  which collects them from Google for Jobs. JSearch itself never visits those sites. At most 3
+  searches a day (target roles × listed countries, remote, last 3 days). These sites are searched,
   never applied to. Ticked after the owner's first run with a JSearch key.
+  *Added 2026-10-02 (owner request):* the finder's own search, a Python script
+  (`worker/jobsearch/jobsearch.py`), up to 6 searches every run with no monthly limit: the free
+  Remotive, RemoteOK, Himalayas and Jobicy APIs, and Jooble with a free key. The owner chose to allow
+  reading LinkedIn, Indeed and Glassdoor directly too (python-jobspy), but only with
+  `SCRAPE_JOB_SITES=true`, off by default, since it breaks those sites' terms and can get the Mac's IP blocked.
 - [ ] **5.4 Duplicate removal** across sites (same company, role and location).
 - [ ] **5.5 Scoring.** Score each job against the criteria and master CV, keep the reasons, and save the
   top 3 as `found`: the day's 3 highest scores from any site, with no minimum (owner, 2026-09-30), only jobs posted in the last 7 days that the owner can apply for from where they live.
@@ -159,5 +164,7 @@ sources are Greenhouse, Lever and Ashby only, with LinkedIn, Indeed and JobStree
 Notifications go to Telegram (5.6). The worker runs at 8:00, 13:00 and 18:00 via launchd, with JSearch on
 the first run of the day only (5.1). OnlineJobs.ph's public job search is read directly (robots.txt allows it,
 crawl delay 5s). The owner's own LinkedIn, JobStreet, Indeed and OnlineJobs.ph job-alert emails
-are read from Gmail (read-only) as a source (5.3). Tailoring moves
+are read from Gmail (read-only) as a source (5.3).
+Settled on 2026-10-02: the finder's own Python search of free job APIs runs every run, and scraping
+LinkedIn, Indeed and Glassdoor directly is an opt-in setting, off by default (5.3). Tailoring moves
 off the paid API to Claude Code as part of stage 6.

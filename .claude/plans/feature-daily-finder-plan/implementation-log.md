@@ -211,3 +211,11 @@ The owner's RapidAPI key is in `worker/.env`. The first live call showed the doc
 **Gate:** `npm run verify` in worker, 101/101.
 **Live run:** `npm start` — 3,193 read (2,986 career pages, 18 JSearch, 137 OnlineJobs.ph, 52 from 8 alert emails), 345 from the last 7 days, 32 reviewed, 3 saved (2 LinkedIn, 1 OnlineJobs.ph), 0 problems. 24 alert jobs left for the next run (cap 20), so only 1 email was marked processed.
 **Reviews:** none separately; unit tests use real subjects from the inbox and the live run exercised it.
+
+## The finder's own job search (Python) — 2026-10-02
+
+**Files changed:** `worker/jobsearch/jobsearch.py`, `worker/jobsearch/test_jobsearch.py`, `worker/src/ownsearch.ts`, `worker/src/ownsearch.test.ts`, `worker/src/run.ts`, `worker/src/jsearch.ts` (`todaysSearches` takes a cap), `worker/README.md` (6d), `worker/.env.example`, `docs/ROADMAP.md` (5.3, Settled), `package.json` (`test` also runs the Python tests)
+**Why:** the owner asked for a homemade JSearch in Python. For sources they chose "Both": free official APIs always (Remotive, RemoteOK, Himalayas, Jobicy; Jooble with `JOOBLE_API_KEY`), plus python-jobspy scraping of LinkedIn, Indeed and Glassdoor, only when `SCRAPE_JOB_SITES=true`. For integration they chose "Wire into the worker". Up to 6 searches every run, dry runs included; remote jobs limited to other countries are dropped.
+**Gate:** `npm run verify` exit 0, 122/122 vitest plus 14 Python tests.
+**Reviews:** the tester checked the script against fake answers, `searchOwn` through real `execFile`, and the jobspy path with a real pandas DataFrame. It found that a naive pandas Timestamp dropped a whole site, and that naive datetimes were read in local time; both fixed (`43e6121`). The auditor scored 66/100 and flagged this log, ROADMAP 5.3, the README step order and the Python tests missing from the gate; all fixed.
+- **Still open:** no live answer from any of the APIs (the build sandbox blocks them), so their field names come from documentation. Record real answers as fixtures on the owner's first run. Real jobspy scraping and Python 3.9 (macOS system Python) are untested. Whether Glassdoor works for the Philippines through jobspy is unknown.
