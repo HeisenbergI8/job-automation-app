@@ -4,6 +4,7 @@
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
+import { NEW_WITHIN_DAYS } from "./dedupe";
 import type { Search } from "./jsearch";
 import type { Posting } from "./sources";
 
@@ -45,7 +46,9 @@ export function parseOwnSearch(stdout: string): { postings: Posting[]; errors: s
 
 /** Runs one search through the Python script (PYTHON_BIN, default python3). */
 export function searchOwn(search: Search, remoteOnly: boolean) {
-  const args = [SCRIPT, search.role, "--country", search.country, "--days", "3", ...(remoteOnly ? ["--remote"] : [])];
+  // The same window as the rest of the finder: jobs it has already seen are skipped anyway (dedupe.ts).
+  // On the owner's first run, 3 days kept 1 of the 19 jobs that matched.
+  const args = [SCRIPT, search.role, "--country", search.country, "--days", String(NEW_WITHIN_DAYS), ...(remoteOnly ? ["--remote"] : [])];
   return new Promise<{ postings: Posting[]; errors: string[] }>((resolve, reject) => {
     execFile(process.env.PYTHON_BIN?.trim() || "python3", args, { timeout: TIMEOUT_MS, maxBuffer: 50 * 1024 * 1024 }, (error, stdout, stderr) => {
       if ((error as NodeJS.ErrnoException | null)?.code === "ENOENT") {
