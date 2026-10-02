@@ -36,6 +36,13 @@ USER_AGENT = "job-finder/1.0 (personal job search)"
 NOT_REMOTE = re.compile(r"\b(hybrid|on-?site|in[- ]office)\b", re.I)
 # Remote jobs open to anyone, or to someone in Asia, count as open to the owner.
 OPEN_ANYWHERE = re.compile(r"\b(worldwide|anywhere|global|remote|asia|apac|asia[- ]pacific|sea|southeast asia)\b", re.I)
+OPEN_TO_ASIA = re.compile(r"\b(worldwide|anywhere|global|asia|apac|asia[- ]pacific|southeast asia)\b", re.I)
+# Regions in a title or location that shut the owner out, e.g. "AI Sales Engineer (EMEA)" (owner's first
+# live run, 2026-10-02: Himalayas listed it as "Remote" with the region only in the title).
+OTHER_REGION = re.compile(
+    r"\b(emea|europe|european|latam|latin america|americas|north america|united states|usa|canada|uk|united kingdom"
+    r"|germany|france|spain|netherlands|brazil|mexico|india)\b", re.I)
+OTHER_REGION_CODE = re.compile(r"\b(US|EU|UK)\b")
 
 COUNTRIES = {
     "ph": "philippines", "sg": "singapore", "au": "australia", "gb": "united kingdom", "my": "malaysia",
@@ -46,6 +53,16 @@ PERIODS_PER_YEAR = {"year": 1, "yearly": 1, "annual": 1, "month": 12, "monthly":
 
 
 # --- helpers ---------------------------------------------------------------------------------------
+
+DEBUG = False
+
+
+def debug(name: str, returned, kept: list) -> list:
+    """With --debug, says on stderr how many jobs a source returned and how many passed the filters."""
+    if DEBUG:
+        print(f"{name}: {len(returned)} returned, {len(kept)} kept", file=sys.stderr)
+    return kept
+
 
 def get_json(url: str, data: dict | None = None):
     body = json.dumps(data).encode() if data is not None else None
@@ -77,10 +94,15 @@ def matches_role(query: str, title: str, tags: list[str] | None = None) -> bool:
     return bool(wanted) and len(wanted & have) / len(wanted) >= 0.5
 
 
-def open_to(country: str, place: str | None) -> bool:
-    """A remote job limited to other countries ("USA only", "Europe") isn't open to the owner."""
+def open_to(country: str, place: str | None, title: str = "") -> bool:
+    """A remote job limited to other regions ("USA only", "Europe", "(EMEA)" in the title) isn't open to the owner."""
     place = (place or "").strip()
-    return not place or bool(OPEN_ANYWHERE.search(place)) or COUNTRIES.get(country, country) in place.lower()
+    name = COUNTRIES.get(country, country)
+    if name in place.lower() or name in title.lower():
+        return True
+    if (OTHER_REGION.search(f"{title} {place}") or OTHER_REGION_CODE.search(f"{title} {place}")) and not OPEN_TO_ASIA.search(place):
+        return False
+    return not place or bool(OPEN_ANYWHERE.search(place))
 
 
 def iso(value) -> str | None:
@@ -139,7 +161,7 @@ def parse_remotive(body: dict, query: str, country: str) -> list[dict]:
                 html_to_text(job.get("description")), True, iso(job.get("publication_date")), salary_raw=job.get("salary"))
         for job in body.get("jobs", [])
         if job.get("url") and job.get("title") and job.get("company_name")
-        and matches_role(query, job["title"], job.get("tags")) and open_to(country, job.get("candidate_required_location"))
+        and matches_role(query, job["title"], job.get("tags")) and open_to(country, job.get("candidate_required_location"), job["title"])
     ]
 
 
@@ -153,7 +175,7 @@ def parse_remoteok(body: list, query: str, country: str) -> list[dict]:
                 currency="USD")
         for job in jobs
         if (job.get("url") or job.get("apply_url")) and job.get("company")
-        and matches_role(query, job["position"], job.get("tags")) and open_to(country, job.get("location"))
+        and matches_role(query, job["position"], job.get("tags")) and open_to(country, job.get("location"), job["position"])
     ]
 
 
@@ -165,7 +187,7 @@ def parse_himalayas(body: dict, query: str, country: str) -> list[dict]:
         places = ", ".join(job.get("locationRestrictions") or [])
         if not (url and job.get("title") and job.get("companyName")):
             continue
-        if not matches_role(query, job["title"], job.get("categories")) or not open_to(country, places):
+        if not matches_role(query, job["title"], job.get("categories")) or not open_to(country, places, job["title"]):
             continue
         currency = job.get("currency")
         out.append(posting("himalayas", url, job["companyName"], job["title"], places or "Remote",
@@ -185,26 +207,30 @@ def parse_jobicy(body: dict, query: str, country: str) -> list[dict]:
                 currency=job.get("salaryCurrency"))
         for job in body.get("jobs", [])
         if job.get("url") and job.get("jobTitle") and job.get("companyName")
-        and matches_role(query, job["jobTitle"], job.get("jobIndustry")) and open_to(country, job.get("jobGeo"))
+        and matches_role(query, job["jobTitle"], job.get("jobIndustry")) and open_to(country, job.get("jobGeo"), job["jobTitle"])
     ]
 
 
 def search_remotive(query, country, remote, days):
-    return parse_remotive(get_json(f"https://remotive.com/api/remote-jobs?{urllib.parse.urlencode({'search': query, 'limit': 50})}"), query, country)
+    body = get_json(f"https://remotive.com/api/remote-jobs?{urllib.parse.urlencode({'search': query, 'limit': 50})}")
+    return debug("remotive", body.get("jobs", []), parse_remotive(body, query, country))
 
 
 def search_remoteok(query, country, remote, days):
     # A tag narrows the list; RemoteOK's tags are single words, so the last word of the role ("engineer").
     tag = (re.findall(r"[a-z0-9]+", query.lower()) or [""])[-1]
-    return parse_remoteok(get_json(f"https://remoteok.com/api?{urllib.parse.urlencode({'tag': tag})}"), query, country)
+    body = get_json(f"https://remoteok.com/api?{urllib.parse.urlencode({'tag': tag})}")
+    return debug("remoteok", body[1:], parse_remoteok(body, query, country))
 
 
 def search_himalayas(query, country, remote, days):
-    return parse_himalayas(get_json(f"https://himalayas.app/jobs/api/search?{urllib.parse.urlencode({'q': query})}"), query, country)
+    body = get_json(f"https://himalayas.app/jobs/api/search?{urllib.parse.urlencode({'q': query})}")
+    return debug("himalayas", body.get("jobs", []), parse_himalayas(body, query, country))
 
 
 def search_jobicy(query, country, remote, days):
-    return parse_jobicy(get_json(f"https://jobicy.com/api/v2/remote-jobs?{urllib.parse.urlencode({'count': 50, 'tag': query})}"), query, country)
+    body = get_json(f"https://jobicy.com/api/v2/remote-jobs?{urllib.parse.urlencode({'count': 50, 'tag': query})}")
+    return debug("jobicy", body.get("jobs", []), parse_jobicy(body, query, country))
 
 
 # --- Jooble, free key ------------------------------------------------------------------------------
@@ -223,7 +249,8 @@ def parse_jooble(body: dict, remote: bool) -> list[dict]:
 def search_jooble(query, country, remote, days):
     key = os.environ["JOOBLE_API_KEY"].strip()
     request = {"keywords": f"{query} remote" if remote else query, "location": COUNTRIES.get(country, country), "page": "1"}
-    return parse_jooble(get_json(f"https://jooble.org/api/{key}", request), remote)
+    body = get_json(f"https://jooble.org/api/{key}", request)
+    return debug("jooble", body.get("jobs", []), parse_jooble(body, remote))
 
 
 # --- LinkedIn, Indeed and Glassdoor through python-jobspy (opt-in) ---------------------------------
@@ -266,7 +293,8 @@ def scraper(site: str):
             results_wanted=20, hours_old=days * 24, country_indeed=COUNTRIES.get(country, country),
             fetch_description=True, description_format="markdown",
         )
-        return parse_jobspy(frame.to_dict("records"), remote)
+        rows = frame.to_dict("records")
+        return debug(site, rows, parse_jobspy(rows, remote))
     return search
 
 
@@ -294,7 +322,8 @@ def search(query: str, country: str, remote: bool, days: int) -> dict:
         futures = {name: pool.submit(run, query, country, remote, days) for name, run in found.items()}
         for name, future in futures.items():
             try:
-                jobs.extend(recent(future.result(), days))
+                found_jobs = future.result()
+                jobs.extend(debug(f"{name} posted in the last {days} days", found_jobs, recent(found_jobs, days)))
             except ModuleNotFoundError:
                 errors.append(f"{name}: python-jobspy isn't installed. Run: pip3 install python-jobspy")
             except Exception as error:  # noqa: BLE001 — any failure is reported, not fatal
@@ -313,7 +342,10 @@ def main() -> None:
     parser.add_argument("--country", default="ph", help="Two-letter country code (default ph)")
     parser.add_argument("--remote", action="store_true", help="Remote jobs only")
     parser.add_argument("--days", type=int, default=3, help="Posted in the last N days (default 3)")
+    parser.add_argument("--debug", action="store_true", help="Say how many jobs each site returned and kept")
     args = parser.parse_args()
+    global DEBUG
+    DEBUG = args.debug
     sys.stdout.reconfigure(encoding="utf-8")  # launchd may start Python without a UTF-8 locale
     json.dump(search(args.query, args.country.lower(), args.remote, args.days), sys.stdout, ensure_ascii=False)
 

@@ -27,6 +27,12 @@ class Helpers(unittest.TestCase):
         self.assertTrue(jobsearch.open_to("ph", "APAC"))
         self.assertFalse(jobsearch.open_to("ph", "USA Only"))
         self.assertFalse(jobsearch.open_to("ph", "Europe"))
+        # The owner's first live run: Himalayas said "Remote" and put the region in the title.
+        self.assertFalse(jobsearch.open_to("ph", "Remote", "AI Sales Engineer, (EMEA)"))
+        self.assertFalse(jobsearch.open_to("ph", "", "Software Engineer - US"))
+        self.assertTrue(jobsearch.open_to("ph", "Remote", "Software Engineer (Philippines)"))
+        self.assertTrue(jobsearch.open_to("ph", "Worldwide, US", "AI Engineer"))
+        self.assertTrue(jobsearch.open_to("ph", "Remote", "Help us build AI"))
 
     def test_yearly(self):
         self.assertEqual(jobsearch.yearly(5000, "monthly"), 60000)
