@@ -4,15 +4,17 @@
 
 - **Plan Type:** feature
 - **Description:** After the daily finder saves its picks, the worker reads each saved job description
-  with Claude Code headless, finds up to 2 people to email (Hunter.io's free API, then a guessed email
-  pattern marked "guessed"), drafts one short, warm, direct email for the best contact, runs it
-  through the no-invention check, and saves contacts and draft. On the Jobs list and the job page a
-  "Send email" button opens Gmail's compose page with everything filled in; the owner edits and
-  presses Send. **The app never sends an email.** "I sent it" records the send on the job's timeline.
-  "Find people" and "pick another contact" leave a request that the owner's Mac picks up (the
-  "Find jobs now" pattern). A sent email with no reply after 5 days gets a follow-up draft and a
-  dashboard reminder. The Telegram batch says how many emails are ready. Covers ROADMAP 7.1 to 7.6.
-- **Date:** 2026-10-02
+  with Claude Code headless and finds up to 2 people to email, using **real addresses only**: one
+  printed in the posting, or one returned by Hunter.io's free API. It never builds an address from a
+  name or a pattern. For the best contact it drafts one short, warm, direct email, runs it through the
+  no-invention check, and saves contacts and draft. With no real email, nothing is drafted and the
+  button honestly says "No email found". On the Jobs list and the job page a "Send email" button opens
+  Gmail's compose page with everything filled in; the owner edits and presses Send. **The app never
+  sends an email.** "I sent it" records the send on the job's timeline. "Find people" and "Use this
+  person" leave a request that the owner's Mac picks up. A sent email with no reply after 5 days gets
+  a follow-up draft and a dashboard reminder. The Telegram batch says how many emails are ready.
+  Covers ROADMAP 7.1 to 7.6.
+- **Date:** 2026-10-02 (revised the same day with the owner's answers to all 12 open decisions)
 - **Branch:** `claude/send-email`
 
 ### Decisions recorded (owner, 2026-10-02; settled)
@@ -20,43 +22,38 @@
 1. **The app never sends email.** It opens Gmail's compose page; the owner presses Send.
 2. **Tone:** warm and direct: friendly, plain, first person, no fluff. No em dashes.
 3. **Up to 2 contacts per job** (the best one plus one backup).
-4. **Contacts:** Hunter.io's free API first (domain search and email finder), then a guessed email
-   pattern, saved with source `guessed` so the UI shows it as less certain. Never scrape LinkedIn or
-   any site that forbids it. Ranking: a recruiter or hiring manager named in the post first, then a
-   manager or director on that team, then a general recruiter or talent person.
-5. **Claude Code headless (`claude -p`) on the owner's subscription** for reading the posting and
-   for drafting, the same way `worker/src/scoring.ts` does. No paid API.
-6. **Click-started work runs on the Mac** ("Find people", "pick another contact and redraft"), the
-   same way the "Find jobs now" button does (`finder_requests`, `worker/src/watch.ts`). The Send button
-   stays instant because drafts are made in advance.
-7. **Database:** `job_contacts` (job, name, title, email, source, confidence) and `outreach_emails`
-   (job, contact, to, subject, body, status draft / opened / sent, opened_at, sent_at), with RLS like
-   every other table.
-8. **Follow-ups:** a sent email with no reply after 5 days gets a dashboard reminder (through the
-   ghosting cron) and a short follow-up draft to the same person.
-9. **Telegram:** one more line in the daily message, e.g. "3 jobs found, 2 emails ready to send."
+4. **Real emails only (D6).** "No guessing if it doesn't know the email; tell honestly, label it
+   clearly", and "No, real emails only" when asked about building one from Hunter's known pattern. An
+   address comes only from (a) the job post, printed verbatim, or (b) Hunter (domain search or email
+   finder). The only sources are `job_post` and `hunter`. With no real email: no contact, no draft, and
+   the button greyed out as "No email found", with a "Find people" action next to it.
+5. **Never scrape LinkedIn** or any site that forbids it. Ranking: a recruiter or hiring manager
+   named in the post first, then a manager or director on that team, then a general recruiter.
+6. **Claude Code headless (`claude -p`) on the owner's subscription** reads the posting and writes
+   the drafts, as `worker/src/scoring.ts` does. No paid API.
+7. **Click-started work runs on the Mac** ("Find people", "Use this person"), through
+   `outreach_requests`, the same way "Find jobs now" works. The Send button is instant because drafts
+   are made in advance.
+8. **D1, timeline:** sent emails are merged into the **job page's** timeline only (`timelineEntries`).
+   `job_status_events` and `set_job_status()` are untouched. The dashboard's "Recent activity" stays
+   status changes only.
+9. **D2:** Hunter's searches are spread evenly over the month (`searchesAllowedToday`).
+10. **D3:** a domain search, plus an email finder for a person the post names, when the domain search
+    didn't return them.
+11. **D4:** the daily ghosting cron writes a fixed-template follow-up draft, and the dashboard shows it.
+12. **D5:** generic addresses (careers@ etc.) only when the job post itself prints them (`job_post`).
+13. **D7:** "a reply" means the job's status moved to screening, interview, offer or rejected.
+14. **D8:** the owner's `https://mail.google.com/mail/?view=cm&fs=1&…` is the default. In Step 8.3 the
+    owner tries it against `tf=cm` and sets the constant.
+15. **D9:** `mailto:` on iPhone and iPad, Gmail's compose page everywhere else.
+16. **D10:** no Hunter verifier. The labels are "From the job post" and "Found by Hunter (N% sure)".
+17. **D11:** "I sent it" never changes the job's status; it only adds the timeline entry.
+18. **D12:** the follow-up is a new email with subject "Re: <first subject>", with the note "Or reply
+    in the first email's thread and paste this."
+19. **Follow-ups:** after 5 days with no reply. **Telegram:** "3 jobs found, 2 emails ready to send."
 
-### Open decisions (the owner chooses; nothing here is silently picked)
-
-Each one has a **proposed default**, which is how the diffs below are written so the plan is
-complete. Each default sits behind one named constant or one small function, so changing it changes
-one place. **Nothing in Phases 3 to 7 should be built until the owner answers D1 to D4.** D5 to D12
-can be answered during the build.
-
-| # | Decision | Options | Proposed default | Where it lives |
-| --- | --- | --- | --- | --- |
-| D1 | **How "Email sent" shows on the timeline** without breaking "status values are fixed, changed only via `set_job_status()`" | **A.** The job page merges `outreach_emails.sent_at` into the timeline it draws (pure `timelineEntries()`); `job_status_events` is untouched. **B.** A database view `job_timeline` that unions both, read by the page and the dashboard's "latest changes". **C.** A new generic `job_events` table that every kind of event goes to; a bigger change that would also move status events. | **A.** The smallest change and unit-testable. Its cost: the dashboard's "Recent activity" list stays status changes only. Sends show on the job page, and unanswered ones in the dashboard's follow-up list (Step 7.2). | `src/lib/outreach.ts` `timelineEntries` |
-| D2 | **How Hunter's free searches are spread** (secondary sources say the free plan has 25 searches a month; unverified, see Contracts) | **A.** Spread them evenly: today's allowance is the remaining searches divided by the days left in the month, rounded up. **B.** First come, first served until they run out. **C.** Only the day's highest-scoring job gets a Hunter lookup. | **A.** About 1 search a day, so roughly 1 of each day's 3 jobs gets a real lookup and the rest get guessed emails. | `worker/src/hunter.ts` `searchesAllowedToday` |
-| D3 | **Which Hunter calls a job may use** | **A.** A domain search only (1 search). **B.** A domain search, plus an email finder for a person the post names when the domain search didn't return them (up to 2 searches). | **B.** Uses the email finder only when it can confirm the person most likely to answer. | `worker/src/contacts.ts` `findContacts` |
-| D4 | **The follow-up draft** | **A.** The daily ghosting cron (Vercel) writes a fixed-template follow-up as a stored draft, and the dashboard shows it. **B.** Nothing stored: the dashboard computes the reminder from a view, and the template is built when the page renders. **C.** As A, but drafted by Claude Code on the Mac in the next finder run. | **A.** The owner asked for the ghosting cron. A fixed template makes no claims about the CV, so it needs no no-invention check, and it works on Vercel without Claude. The cost: a reminder can show up to a day late, because the cron runs once a day at 01:00 UTC. | `src/lib/outreach.ts` `followUpDraft`, cron route |
-| D5 | **Generic addresses** (careers@, jobs@, talent@) | Use one as the last-choice contact, or never. | Use one **only when the job post itself prints it** (source `job_post`); never a guessed or Hunter "generic" one. | `worker/src/contacts.ts` |
-| D6 | **The default guessed pattern** when Hunter gives none | `first.last@` / `first@` / `flast@` | `first.last@` (when Hunter's domain search returned a pattern, that pattern is used). | `worker/src/contacts.ts` `DEFAULT_PATTERN` |
-| D7 | **What counts as "a reply"** for the 5-day follow-up | **A.** The job's status moved to screening, interview, offer or rejected (the owner records the reply). **B.** Also read the owner's Gmail (read-only, IMAP is already set up for alerts) for a message from the contact. | **A** now. B is a follow-up. | the follow-up view in Step 1.2 |
-| D8 | **The Gmail link format** | The owner's `?view=cm&fs=1&to=…&su=…&body=…`, or `?tf=cm&…` (a 2020s note by Simon Willison says `fs` no longer does anything and `view=cm` was replaced by `tf=cm`; it's undated, so I can't tell how current it is). Also which account opens: `/mail/u/0/` (the first signed-in account) or `authuser=<address>`. | The owner's format, with `/mail/?`. Step 8.3 has the owner try both links once, and the result sets one constant. | `src/lib/outreach.ts` `GMAIL_COMPOSE` |
-| D9 | **Phones.** The same note says the compose link doesn't open the compose page in iPhone Safari. | Always Gmail; or `mailto:` on iPhone and iPad. | `mailto:` when the browser reports iPhone/iPad (the mail app opens instead). | `send-email-button.tsx` |
-| D10 | **Labels and verification.** Hunter's emails aren't "confirmed" unless Hunter's verifier is used (secondary sources: a separate pool of 50 verifications a month). | **A.** No verifier: labels are "From the job post", "Found by Hunter (N%)", "Guessed". **B.** Also verify guessed emails with Hunter's verifier and relabel them "Verified". | **A.** B is a follow-up once a real verifier answer has been recorded. | `src/lib/outreach.ts` `CONTACT_LABELS` |
-| D11 | **Does "I sent it" change the job's status?** | No; or offer to move `found` to `applied`. | **No.** An outreach email isn't an application. The timeline entry is enough. | `outreach-actions.ts` |
-| D12 | **Follow-up threading.** A compose link can't reply inside the first email's Gmail thread. | A new email with subject "Re: <first subject>"; or tell the owner to reply in the thread instead and use the draft as text to paste. | A new email with "Re:", plus a short note under the button: "Or reply in the first email's thread and paste this." | `followUpDraft` |
+**Nothing is open from the first round.** One new question came up while revising (Follow Ups,
+Question 1). It doesn't block building, because the default keeps every Hunter answer and shows its score.
 
 ### Design decisions made by this plan
 
@@ -74,6 +71,8 @@ can be answered during the build.
 | Link encoding | `encodeURIComponent` for every value. For Gmail, newlines become `%0A`; for `mailto:`, `%0D%0A`, as RFC 6068 requires. | Tested in Step 2.2 with `&`, `?`, `#`, `+`, `%`, quotes, non-ASCII and line breaks. |
 | Marking "opened" | A plain `<a href target="_blank">`. Its `onClick` calls the server action without waiting for it. | Opening a tab *after* an `await` gets popup-blocked. A real link always opens; the status write happens alongside it. The Next 16 docs allow calling a Server Function from `onClick` (`node_modules/next/dist/docs/01-app/01-getting-started/07-mutating-data.md`, "Event Handlers"). |
 | Anti-hallucination for extracted contacts | A name is kept only if `mentions(description, name)`. An email is kept only if it appears verbatim in the description. A domain is kept only if it's a valid hostname, and is marked as inferred when it isn't in the description. | Same idea as alert links in `alerts.ts`: Claude must point at the source text, not invent it. |
+| Named people with no real email | **Not stored.** `job_contacts.email` stays `not null`. A job with no real email has no contact rows and no draft, and the UI shows "No email found". | Storing email-less names would add a nullable email, a second UI state and no button to press. The minimal model is: a contact is someone the owner can actually write to. |
+| A domain Claude inferred (not printed in the post) | Hunter's people for that domain count only when Hunter's `organization` matches the job's company. The email finder is used only on a domain that's printed in the post or confirmed that way. | Otherwise a wrong inferred domain would return real addresses at *another* company, which is worse than "No email found". |
 | Dry runs | Outreach is skipped completely: no Hunter searches (they're precious), and no Claude drafts. | Like JSearch in dry runs (implementation log, 2026-09-29). |
 
 ### Contracts: verified, documented, unknown
@@ -175,8 +174,9 @@ instead of hand-editing `types.ts`.
 + -- 2 people to email and drafts one email; the app opens it in Gmail's compose page and the owner
 + -- presses Send. Nothing in this app sends email.
 +
-+ -- 7.2: where a contact came from. 'job_post': named (or their email printed) in the saved posting.
-+ create type public.contact_source as enum ('hunter', 'guessed', 'job_post');
++ -- 7.2: where a contact's address came from. Real emails only (owner, 2026-10-02): printed in the saved
++ -- posting, or returned by Hunter. Never built from a name or a pattern, so there is no 'guessed'.
++ create type public.contact_source as enum ('hunter', 'job_post');
 +
 + create table public.job_contacts (
 +   id uuid primary key default gen_random_uuid(),
@@ -185,7 +185,7 @@ instead of hand-editing `types.ts`.
 +   title text,
 +   email text not null check (email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
 +   source public.contact_source not null,
-+   -- 0-100: Hunter's own confidence, or the worker's estimate for a guess (worker/src/contacts.ts).
++   -- 0-100: Hunter's own score; 95 for an address printed in the posting (worker/src/contacts.ts).
 +   confidence smallint check (confidence between 0 and 100),
 +   -- 1 is the best contact, 2 the backup (owner, 2026-10-02: up to 2 per job).
 +   rank smallint not null check (rank in (1, 2)),
@@ -287,7 +287,7 @@ instead of hand-editing `types.ts`.
 + -- 7.1: Hunter searches each run used, so later runs know how many of the month's free ones are left.
 + alter table public.worker_runs add column hunter_lookups integer not null default 0;
 +
-+ -- 7.6 (open decision D4, default A): first emails sent 5 or more days ago, on a job with no reply
++ -- 7.6 (owner decision D4): first emails sent 5 or more days ago, on a job with no reply
 + -- (REPLY_STATUSES in src/lib/jobs.ts) and no follow-up yet. The daily ghosting cron drafts one for each.
 + -- 5 days is the owner's number (2026-10-02); FOLLOW_UP_AFTER_DAYS in src/lib/outreach.ts says the same.
 + create view public.outreach_follow_ups_due with (security_invoker = true) as
@@ -340,13 +340,18 @@ Status order, timestamps, the redraft reset, refusing a redraft once sent, and p
 + -- ROADMAP 7.1 / 7.4: outreach email status order and times, the redraft rule, who may write what,
 + -- and the follow-up view.
 + begin;
-+ select plan(16);
++ select plan(17);
 +
 + insert into public.jobs (id, site, url, company, role) values
 +   ('00000000-0000-0000-0000-0000000000e1', 'lever', 'https://example.test/outreach', 'Mail Co', 'Frontend Engineer');
 + insert into public.job_contacts (id, job_id, name, title, email, source, confidence, rank) values
-+   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1', 'Ana Cruz', 'Recruiter', 'ana.cruz@mail.test', 'job_post', 90, 1),
-+   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000e1', 'Ben Ong', 'Engineering Manager', 'ben.ong@mail.test', 'guessed', 40, 2);
++   ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1', 'Ana Cruz', 'Recruiter', 'ana.cruz@mail.test', 'job_post', 95, 1),
++   ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000e1', 'Ben Ong', 'Engineering Manager', 'ben.ong@mail.test', 'hunter', 88, 2);
++
++ select throws_ok(
++   $$ insert into public.job_contacts (job_id, name, email, source, rank)
++      values ('00000000-0000-0000-0000-0000000000e1', 'Made Up', 'made.up@mail.test', 'guessed', 1) $$,
++   '22P02', null, 'there is no guessed source: real emails only');
 +
 + select throws_ok(
 +   $$ insert into public.outreach_emails (job_id, to_email, subject, body, status)
@@ -465,7 +470,7 @@ and `references/check-review.ts` for why an adapter is needed.
 + /** Owner, 2026-10-02. The view outreach_follow_ups_due uses the same number. */
 + export const FOLLOW_UP_AFTER_DAYS = 5;
 +
-+ // Open decision D8: the owner's format. Step 8.3 has the owner try it and `?tf=cm` once.
++ // Owner decision D8: the owner's format. Step 8.3 has the owner try it and `?tf=cm` once.
 + export const GMAIL_COMPOSE = "https://mail.google.com/mail/?view=cm&fs=1";
 + /**
 +  * Not measured (no Gmail in the build sandbox, 2026-10-02). Secondary sources give about 4,096 for
@@ -517,15 +522,14 @@ and `references/check-review.ts` for why an adapter is needed.
 +   return problems;
 + }
 +
-+ /** How a contact is labelled (open decision D10, default A: nothing is called "verified"). */
-+ export const CONTACT_LABELS: Record<ContactSource, string> = {
-+   job_post: "From the job post",
-+   hunter: "Found by Hunter",
-+   guessed: "Guessed",
-+ };
++ /** How a contact is labelled (owner decision D10: no verifier, so nothing is called "verified"). */
++ export function contactLabel(source: ContactSource, confidence: number | null) {
++   if (source === "job_post") return "From the job post";
++   return confidence != null ? `Found by Hunter (${confidence}% sure)` : "Found by Hunter";
++ }
 +
 + /**
-+  * The follow-up (open decision D4, default A: a fixed template). It states no claims about the CV, so it
++  * The follow-up (owner decision D4: a fixed template). It states no claims about the CV, so it
 +  * needs no no-invention check. No date in the text: the server's day and the owner's can differ.
 +  */
 + export function followUpDraft(
@@ -550,7 +554,7 @@ and `references/check-review.ts` for why an adapter is needed.
 + export type TimelineEntry = { key: string; at: string; label: string; note: string | null; kind: "status" | "email" };
 +
 + /**
-+  * The job page's timeline (open decision D1, default A): status events plus sent emails, by time.
++  * The job page's timeline (owner decision D1): status events plus sent emails, by time.
 +  * job_status_events is untouched; "Email sent" is not a status.
 +  */
 + export function timelineEntries(
@@ -623,7 +627,7 @@ timeline entry. The status changes themselves are covered by the pgTAP tests in 
 + import { describe, expect, it } from "vitest";
 + import type { MasterCv } from "@/lib/master-cv";
 + import {
-+   composeLink, findEmailInventions, followUpDraft, GMAIL_COMPOSE, MAX_BODY_CHARS, MAX_URL_LENGTH,
++   composeLink, contactLabel, findEmailInventions, followUpDraft, GMAIL_COMPOSE, MAX_BODY_CHARS, MAX_URL_LENGTH,
 +   requestState, timelineEntries, withoutDashes,
 + } from "./outreach";
 +
@@ -683,7 +687,7 @@ timeline entry. The status changes themselves are covered by the pgTAP tests in 
 +     expect(link.href.startsWith("mailto:ana.cruz@mail.test?subject=Hi&body=Line%20one%0D%0A")).toBe(true);
 +   });
 +
-+   it("gives mailto: when asked (phones, open decision D9)", () => {
++   it("gives mailto: when asked (phones, owner decision D9)", () => {
 +     expect(composeLink({ to_email: "a@b.test", ...faithful }, "mailto").kind).toBe("mailto");
 +   });
 + });
@@ -716,6 +720,13 @@ timeline entry. The status changes themselves are covered by the pgTAP tests in 
 + describe("withoutDashes", () => {
 +   it("turns spaced em dashes into commas and the rest into hyphens", () => {
 +     expect(withoutDashes("I build apps — mostly React—fast")).toBe("I build apps, mostly React-fast");
++   });
++ });
++
++ describe("contactLabel", () => {
++   it("says where a real address came from, with Hunter's score", () => {
++     expect(contactLabel("job_post", 95)).toBe("From the job post");
++     expect(contactLabel("hunter", 88)).toBe("Found by Hunter (88% sure)");
 +   });
 + });
 +
@@ -813,7 +824,7 @@ completely wrong shape is loud. The fixtures carry a `_source` note saying they 
 + /** Free searches a month. Secondary sources (2025–26) say 25; unverified. HUNTER_MONTHLY_SEARCHES overrides it. */
 + export const DEFAULT_MONTHLY_SEARCHES = 25;
 +
-+ /** Hunter said no more searches: the run carries on with guessed emails and says nothing about it. */
++ /** Hunter said no more searches: the run carries on without Hunter and says nothing about it. */
 + export class HunterLimitReached extends Error {}
 +
 + const emailSchema = z.object({
@@ -829,7 +840,6 @@ completely wrong shape is loud. The fixtures carry a `_source` note saying they 
 + const domainSearchSchema = z.object({
 +   data: z.object({
 +     organization: z.string().nullish(),
-+     pattern: z.string().nullish(), // e.g. "{first}.{last}"
 +     emails: z.array(emailSchema).nullish(),
 +   }),
 + });
@@ -853,13 +863,12 @@ completely wrong shape is loud. The fixtures carry a `_source` note saying they 
 +   confidence: number | null;
 +   generic: boolean;
 + };
-+ export type DomainSearch = { organization: string | null; pattern: string | null; people: HunterPerson[] };
++ export type DomainSearch = { organization: string | null; people: HunterPerson[] };
 +
 + export function parseDomainSearch(body: unknown): DomainSearch {
 +   const { data } = domainSearchSchema.parse(body);
 +   return {
 +     organization: data.organization ?? null,
-+     pattern: data.pattern ?? null,
 +     people: (data.emails ?? []).map((email) => ({
 +       email: email.value.toLowerCase(),
 +       firstName: email.first_name ?? null,
@@ -912,7 +921,7 @@ completely wrong shape is loud. The fixtures carry a `_source` note saying they 
 + }
 +
 + /**
-+  * Searches allowed today (open decision D2, default A): what's left of the month, spread evenly over
++  * Searches allowed today (owner decision D2): what's left of the month, spread evenly over
 +  * the days left, counting from the 1st (UTC; when Hunter really resets is unknown).
 +  */
 + export function searchesAllowedToday(monthlyLimit: number, usedThisMonth: number, usedToday: number, now: Date) {
@@ -969,9 +978,9 @@ is documentation-based, so nobody mistakes a green run for a verified contract.
 + afterEach(() => vi.unstubAllGlobals());
 +
 + describe("Hunter parsers (DOCUMENTATION-BASED fixture, not yet a recorded answer)", () => {
-+   it("reads people, the pattern and which addresses are generic from a domain search", () => {
++   it("reads people, the organization and which addresses are generic from a domain search", () => {
 +     const result = parseDomainSearch(domainFixture);
-+     expect(result.pattern).toBe("{first}.{last}");
++     expect(result.organization).toBe("Mail Co");
 +     expect(result.people).toHaveLength(4);
 +     expect(result.people[1]).toMatchObject({ email: "ben.ong@mail.test", position: "Engineering Manager, Platform", confidence: 88, generic: false });
 +     expect(result.people[3]).toMatchObject({ email: "careers@mail.test", generic: true });
@@ -1005,7 +1014,7 @@ is documentation-based, so nobody mistakes a green run for a verified contract.
 +   });
 + });
 +
-+ describe("searchesAllowedToday (open decision D2, default A)", () => {
++ describe("searchesAllowedToday (owner decision D2)", () => {
 +   it("spreads what's left of the month over the days left", () => {
 +     expect(searchesAllowedToday(25, 0, 0, new Date("2026-10-01T03:00:00Z"))).toBe(1); // 25 over 31 days
 +     expect(searchesAllowedToday(25, 10, 0, new Date("2026-10-27T03:00:00Z"))).toBe(3); // 15 over 5 days
@@ -1015,22 +1024,23 @@ is documentation-based, so nobody mistakes a green run for a verified contract.
 + });
 ```
 
-#### Step 3.3: Reading the posting, ranking contacts and guessing emails
+#### Step 3.3: Reading the posting, finding real addresses and ranking contacts
 
 **File:** `worker/src/contacts.ts`
 **Verify:** `npm run typecheck`
 
 Three parts: (1) one Claude Code call reads the posting for facts, and a guard drops anything the
-posting doesn't actually contain; (2) candidates from the post, Hunter and guesses; (3) the owner's
-ranking, keeping 2. Nothing here visits any website except Hunter's API. **No LinkedIn and no
+posting doesn't actually contain; (2) candidates with real addresses only, from the post or Hunter;
+(3) the owner's ranking, keeping 2. With no real address the result is empty, never made up. Nothing here visits any website except Hunter's API. **No LinkedIn and no
 scraping** (owner, 2026-10-02).
 
 ```diff
 + // ROADMAP 7.2: who to email about a saved job. Claude Code (headless, the owner's subscription) reads
 + // the saved posting for the company's email domain, the team and anyone it names; Hunter.io's free API
-+ // finds people at that domain; when Hunter has nothing or its free searches are used up, an email is
-+ // guessed from the company's pattern and saved as "guessed". Never LinkedIn, never scraping (owner,
-+ // 2026-10-02). Ranked: someone the post names, then a manager on that team, then a recruiter.
++ // finds people at that domain. Real emails only (owner, 2026-10-02): an address printed in the posting
++ // or returned by Hunter, never one built from a name or a pattern. No real email means no contact, and
++ // the app says "No email found". Never LinkedIn, never scraping. Ranked: someone the post names, then a
++ // manager on that team, then a recruiter.
 + import { z } from "zod";
 + import type { ContactSource } from "@/lib/outreach";
 + import { mentions } from "@/lib/tailoring/text";
@@ -1130,25 +1140,8 @@ scraping** (owner, 2026-10-02).
 +   tier: 1 | 2 | 3 | 4;
 + };
 +
-+ /** Open decision D6, default: first.last@ when Hunter gives no pattern. */
-+ export const DEFAULT_PATTERN = "{first}.{last}";
 + const LEADER = /\b(manager|director|head|lead|vp|vice president|chief|cto|founder)\b/i;
 + const RECRUITER = /\b(recruit\w*|talent|people|hr|human resources|hiring)\b/i;
-+
-+ const plain = (part: string) => part.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]/g, "");
-+
-+ /**
-+  * An email guessed from a name and the company's pattern ({first}, {last}, {f}, {l}). Null when the
-+  * pattern needs a last name the person doesn't have.
-+  */
-+ export function guessEmail(name: string, domain: string, pattern = DEFAULT_PATTERN): string | null {
-+   const parts = name.trim().split(/\s+/).map(plain).filter(Boolean);
-+   const first = parts[0];
-+   const last = parts.length > 1 ? parts.at(-1)! : "";
-+   if (!first || (!last && /\{l(ast)?\}/.test(pattern))) return null;
-+   const local = pattern.replace("{first}", first).replace("{last}", last).replace("{f}", first[0]).replace("{l}", last[0] ?? "");
-+   return /^[a-z0-9._-]+$/.test(local) ? `${local}@${domain}` : null;
-+ }
 +
 + /** The department a role belongs to, to tell a manager on "that team" from any manager. */
 + function roleDepartment(role: string) {
@@ -1161,7 +1154,7 @@ scraping** (owner, 2026-10-02).
 +
 + /** Where a Hunter person ranks, or null when they're no one to email about this job (sales, finance…). */
 + export function hunterTier(person: HunterPerson, team: string | null, role: string): 2 | 3 | null {
-+   if (person.generic) return null; // open decision D5: only generic addresses the post prints
++   if (person.generic) return null; // owner decision D5: only generic addresses the post prints
 +   const about = `${person.position ?? ""} ${person.department ?? ""}`;
 +   const department = roleDepartment(role);
 +   const onTeam = (team != null && mentions(about, team)) || (department != null && mentions(about, department));
@@ -1170,7 +1163,7 @@ scraping** (owner, 2026-10-02).
 +   return null;
 + }
 +
-+ const SOURCE_ORDER: Record<ContactSource, number> = { job_post: 0, hunter: 1, guessed: 2 };
++ const SOURCE_ORDER: Record<ContactSource, number> = { job_post: 0, hunter: 1 };
 +
 + /** The owner's order (2026-10-02), the surest source first within a tier, then confidence. Keeps 2. */
 + export function rankContacts(candidates: Candidate[], keep = 2): Candidate[] {
@@ -1192,31 +1185,35 @@ scraping** (owner, 2026-10-02).
 +
 + const EMAIL_IN_TEXT = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
 +
-+ /** Up to 2 contacts for one job, and how many Hunter searches were spent. */
-+ export async function findContacts(job: JobForOutreach, facts: PostingFacts, hunter: HunterAccess | null) {
-+   const candidates: Candidate[] = [];
-+   let lookups = 0;
-+   let pattern: string | null = null;
-+   const domainPenalty = facts.domainInPost ? 0 : 10;
++ /** Whether Hunter's organization is this job's company: the check for a domain Claude inferred. */
++ export function sameOrganization(organization: string | null, company: string) {
++   return organization != null && (mentions(organization, company) || mentions(company, organization));
++ }
 +
++ /**
++  * Up to 2 contacts for one job, every one with a real address. Empty when none was found: the app then
++  * says "No email found". Hunter's searches are counted by the HunterAccess itself (outreach.ts).
++  */
++ export async function findContacts(job: JobForOutreach, facts: PostingFacts, hunter: HunterAccess | null): Promise<Candidate[]> {
++   const candidates: Candidate[] = [];
 +   const spend = async <T>(search: () => Promise<T>): Promise<T | null> => {
 +     if (!hunter?.take()) return null;
-+     lookups++;
 +     try {
 +       return await search();
 +     } catch (error) {
 +       if (error instanceof HunterLimitReached) {
-+         hunter.stop(); // quietly: guessed emails from here on
++         hunter.stop(); // quietly: no more Hunter searches today
 +         return null;
 +       }
 +       throw error;
 +     }
 +   };
 +
-+   // Hunter's domain search first: it gives the team's people and the company's email pattern.
++   // Hunter's domain search first. For a domain Claude inferred, Hunter's people count only when Hunter
++   // says they work at this company, so a wrong domain never gives someone else's real address.
 +   const found = facts.domain ? await spend(() => hunter!.domainSearch(facts.domain!)) : null;
-+   if (found) {
-+     pattern = found.pattern;
++   const trusted = facts.domainInPost || (found != null && sameOrganization(found.organization, job.company));
++   if (found && trusted) {
 +     for (const person of found.people) {
 +       const tier = hunterTier(person, facts.team, job.role);
 +       const name = [person.firstName, person.lastName].filter(Boolean).join(" ");
@@ -1224,54 +1221,51 @@ scraping** (owner, 2026-10-02).
 +     }
 +   }
 +
-+   // People the post names: their printed email, else Hunter's email finder (open decision D3, default B),
-+   // else a guess from the pattern.
++   // People the post names: their printed email, else Hunter's email finder (owner decision D3).
++   // Nothing else: a named person with no real address is left out, not guessed.
 +   for (const person of facts.people) {
 +     if (person.email) {
 +       candidates.push({ name: person.name, title: person.title, email: person.email, source: "job_post", confidence: 95, tier: 1 });
 +       continue;
 +     }
-+     if (!facts.domain) continue;
-+     const [first, ...rest] = person.name.split(/\s+/);
 +     const fromHunter = candidates.find((candidate) => candidate.source === "hunter" && mentions(candidate.name, person.name));
 +     if (fromHunter) {
 +       fromHunter.tier = 1;
 +       continue;
 +     }
-+     const confirmed = rest.length ? await spend(() => hunter!.emailFinder(facts.domain!, first, rest.at(-1)!)) : null;
++     const [first, ...rest] = person.name.split(/\s+/);
++     if (!facts.domain || !trusted || !rest.length) continue;
++     const confirmed = await spend(() => hunter!.emailFinder(facts.domain!, first, rest.at(-1)!));
 +     if (confirmed) {
 +       candidates.push({ name: person.name, title: person.title, email: confirmed.email, source: "hunter", confidence: confirmed.confidence ?? 50, tier: 1 });
-+       continue;
-+     }
-+     const guess = guessEmail(person.name, facts.domain, pattern ?? DEFAULT_PATTERN);
-+     if (guess) {
-+       candidates.push({ name: person.name, title: person.title, email: guess, source: "guessed", confidence: (pattern ? 45 : 30) - domainPenalty, tier: 1 });
 +     }
 +   }
 +
-+   // Open decision D5, default: a generic address only when the post itself prints it.
++   // Owner decision D5: a generic address only when the post itself prints it.
 +   const named = new Set(facts.people.map((person) => person.email));
 +   for (const email of new Set(job.description.match(EMAIL_IN_TEXT)?.map((match) => match.toLowerCase()) ?? [])) {
 +     if (!named.has(email)) candidates.push({ name: `${job.company} hiring team`, title: null, email, source: "job_post", confidence: 60, tier: 4 });
 +   }
 +
-+   return { contacts: rankContacts(candidates), lookups };
++   return rankContacts(candidates);
 + }
 ```
 
-#### Step 3.4: Contact ranking, guessed-email and extraction-guard tests
+#### Step 3.4: Contact ranking, real-emails-only and extraction-guard tests
 
 **File:** `worker/src/contacts.test.ts`
 **Verify:** `npx vitest run worker/src/contacts.test.ts`
 
-The owner asked for tests of the contact ranking and the guessed-email fallback. Hunter is a fake
-`HunterAccess` backed by the fixture, so there are no live calls.
+The owner asked for tests of the contact ranking, and of "no real email → no contact and no draft,
+never a made-up address". Hunter is a fake `HunterAccess` backed by the fixtures, so there are no
+live calls. The "no draft" half is in Step 4.2.
 
 ```diff
 + import { describe, expect, it, vi } from "vitest";
 + import domainFixture from "../fixtures/hunter-domain-search.json";
-+ import { findContacts, guardFacts, guessEmail, rankContacts, type Candidate, type HunterAccess, type PostingFacts } from "./contacts";
-+ import { HunterLimitReached, parseDomainSearch } from "./hunter";
++ import finderFixture from "../fixtures/hunter-email-finder.json";
++ import { findContacts, guardFacts, rankContacts, type Candidate, type HunterAccess, type PostingFacts } from "./contacts";
++ import { HunterLimitReached, parseDomainSearch, parseEmailFinder } from "./hunter";
 +
 + const job = {
 +   id: "j1",
@@ -1284,48 +1278,36 @@ The owner asked for tests of the contact ranking and the guessed-email fallback.
 +   people: [{ name: "Ana Cruz", title: "Technical Recruiter", email: null }], skills: ["React"],
 + };
 +
-+ function fakeHunter(searches: number, opts: { limit?: boolean } = {}): HunterAccess & { calls: string[] } {
++ function fakeHunter(searches: number, opts: { limit?: boolean; finds?: boolean } = {}): HunterAccess & { calls: string[] } {
 +   let left = searches;
 +   const calls: string[] = [];
 +   return {
 +     calls,
 +     take: () => (left > 0 ? (left--, true) : false),
-+     stop: () => (left = 0),
++     stop: () => void (left = 0),
 +     domainSearch: vi.fn(async () => {
 +       calls.push("domain");
 +       if (opts.limit) throw new HunterLimitReached("429");
 +       return parseDomainSearch(domainFixture);
 +     }),
-+     emailFinder: vi.fn(async () => (calls.push("finder"), null)),
++     emailFinder: vi.fn(async () => (calls.push("finder"), opts.finds ? parseEmailFinder(finderFixture) : null)),
 +   };
 + }
++ const emails = (contacts: Candidate[]) => contacts.map((x) => x.email);
 +
 + describe("rankContacts", () => {
-+   const c = (over: Partial<Candidate>): Candidate => ({ name: "X", title: null, email: `${Math.random()}@m.test`, source: "hunter", confidence: 50, tier: 3, ...over });
++   const c = (over: Partial<Candidate>): Candidate => ({ name: "X", title: null, email: `${over.name}@m.test`, source: "hunter", confidence: 50, tier: 3, ...over });
 +   it("puts the person the post names first, then a manager on the team, then a recruiter, and keeps 2", () => {
-+     const ranked = rankContacts([
-+       c({ name: "Recruiter", tier: 3, confidence: 99 }),
-+       c({ name: "Manager", tier: 2 }),
-+       c({ name: "Named", tier: 1, source: "guessed", confidence: 30 }),
-+     ]);
++     const ranked = rankContacts([c({ name: "Recruiter", tier: 3, confidence: 99 }), c({ name: "Manager", tier: 2 }), c({ name: "Named", tier: 1, confidence: 30 })]);
 +     expect(ranked.map((x) => x.name)).toEqual(["Named", "Manager"]);
 +   });
-+   it("prefers the surer source within a tier, and drops duplicate addresses", () => {
++   it("prefers an address printed in the post within a tier, and drops duplicate addresses", () => {
 +     const ranked = rankContacts([
-+       c({ name: "Guess", tier: 2, source: "guessed", email: "a@m.test" }),
-+       c({ name: "Hunter", tier: 2, source: "hunter", email: "a@m.test" }),
-+       c({ name: "Post", tier: 2, source: "job_post", email: "b@m.test" }),
++       c({ name: "Hunter", tier: 2, email: "a@m.test", confidence: 99 }),
++       c({ name: "Post", tier: 2, source: "job_post", email: "a@m.test" }),
++       c({ name: "Other", tier: 2, email: "b@m.test" }),
 +     ]);
-+     expect(ranked.map((x) => x.name)).toEqual(["Post", "Hunter"]);
-+   });
-+ });
-+
-+ describe("guessEmail", () => {
-+   it("follows the pattern, drops accents and needs a last name only when the pattern does", () => {
-+     expect(guessEmail("José Rizal", "mail.test")).toBe("jose.rizal@mail.test");
-+     expect(guessEmail("Ana Cruz", "mail.test", "{f}{last}")).toBe("acruz@mail.test");
-+     expect(guessEmail("Ana", "mail.test")).toBeNull();
-+     expect(guessEmail("Ana", "mail.test", "{first}")).toBe("ana@mail.test");
++     expect(ranked.map((x) => x.name)).toEqual(["Post", "Other"]);
 +   });
 + });
 +
@@ -1344,76 +1326,77 @@ The owner asked for tests of the contact ranking and the guessed-email fallback.
 +   });
 + });
 +
-+ describe("findContacts", () => {
-+   it("uses Hunter's people and pattern: the named recruiter (guessed from the pattern) first, then the Platform manager", async () => {
-+     const hunter = fakeHunter(2);
-+     const { contacts, lookups } = await findContacts(job, facts, hunter);
++ describe("findContacts (real emails only)", () => {
++   it("finds the named recruiter through Hunter's email finder, then the Platform manager", async () => {
++     const hunter = fakeHunter(2, { finds: true });
++     const contacts = await findContacts(job, facts, hunter);
 +     expect(contacts.map((x) => [x.name, x.source, x.email])).toEqual([
-+       ["Ana Cruz", "guessed", "ana.cruz@mail.test"],
++       ["Ana Cruz", "hunter", "ana.cruz@mail.test"],
 +       ["Ben Ong", "hunter", "ben.ong@mail.test"],
 +     ]);
 +     expect(hunter.calls).toEqual(["domain", "finder"]);
-+     expect(lookups).toBe(2);
++   });
++
++   it("never makes up an address: a named person Hunter can't find is left out", async () => {
++     const contacts = await findContacts(job, facts, fakeHunter(2));
++     expect(contacts.map((x) => x.name)).toEqual(["Ben Ong", "Carla Reyes"]);
++     expect(emails(contacts)).not.toContain("ana.cruz@mail.test");
 +   });
 +
 +   it("never offers the sales person or Hunter's generic address", async () => {
-+     const { contacts } = await findContacts(job, { ...facts, people: [] }, fakeHunter(1));
-+     expect(contacts.map((x) => x.name)).toEqual(["Ben Ong", "Carla Reyes"]);
++     const contacts = await findContacts(job, { ...facts, people: [] }, fakeHunter(1));
++     expect(emails(contacts)).toEqual(["ben.ong@mail.test", "carla.reyes@mail.test"]);
 +   });
 +
-+   it("falls back to a guessed email, quietly, when Hunter's free limit is used up", async () => {
-+     const hunter = fakeHunter(5, { limit: true });
-+     const { contacts } = await findContacts(job, facts, hunter);
-+     expect(contacts).toEqual([expect.objectContaining({ name: "Ana Cruz", source: "guessed", email: "ana.cruz@mail.test", tier: 1 })]);
-+     expect(hunter.calls).toEqual(["domain"]); // stopped: no email-finder call after the limit
++   it("finds no one, and says so, without Hunter or once its free limit is used up", async () => {
++     expect(await findContacts(job, facts, null)).toEqual([]);
++     const limited = fakeHunter(5, { limit: true });
++     expect(await findContacts(job, facts, limited)).toEqual([]);
++     expect(limited.calls).toEqual(["domain"]); // stopped quietly: no email-finder call after the limit
 +   });
 +
-+   it("makes no Hunter calls with no key or no searches left", async () => {
-+     const none = await findContacts(job, facts, null);
-+     expect(none.contacts.map((x) => x.source)).toEqual(["guessed"]);
-+     const hunter = fakeHunter(0);
-+     await findContacts(job, facts, hunter);
-+     expect(hunter.calls).toEqual([]);
++   it("ignores Hunter's people for an inferred domain that belongs to another company", async () => {
++     const hunter = fakeHunter(2, { finds: true });
++     const contacts = await findContacts({ ...job, company: "Other Co" }, { ...facts, domainInPost: false }, hunter);
++     expect(contacts).toEqual([]);
++     expect(hunter.calls).toEqual(["domain"]);
 +   });
 +
-+   it("uses an address the post prints, ahead of guesses", async () => {
++   it("uses an address the post prints, ahead of Hunter's", async () => {
 +     const printed = { ...job, description: `${job.description} Email ana.cruz@mail.test to apply.` };
-+     const { contacts } = await findContacts(printed, { ...facts, people: [{ ...facts.people[0], email: "ana.cruz@mail.test" }] }, null);
-+     expect(contacts[0]).toMatchObject({ source: "job_post", email: "ana.cruz@mail.test", tier: 1 });
++     const contacts = await findContacts(printed, { ...facts, people: [{ ...facts.people[0], email: "ana.cruz@mail.test" }] }, null);
++     expect(contacts).toEqual([expect.objectContaining({ source: "job_post", email: "ana.cruz@mail.test", tier: 1 })]);
 +   });
 + });
 ```
 
 #### Phase 3 — Potential Issues
 
-- **Contract uncertainty (Hunter):** the biggest risk in the plan. Field names, the pattern format
-  (`{first}.{last}`), the quota status codes and the credit cost per call are all unverified. Lenient
-  parsing plus Step 8.2 (a recorded fixture, then fixing the parser and tests against it) is the
-  mitigation the repo learned from JSearch.
-- **Free-plan arithmetic:** with about 25 searches a month and 3 saved jobs a day (about 90 a month),
-  Hunter covers about 1 job in 4 even with perfect spreading. **Most contacts will be guessed, and a
-  job whose post names nobody gets no contact at all once the day's searches are spent.** The owner
-  should expect many "No contact found" buttons. That's honest, not a defect, and the Telegram line shows
-  it daily. A paid Hunter plan or verification (D10) would change it.
-- **Claude-inferred domains:** when the posting has no domain, Claude may infer a wrong one
-  (`mailco.com` vs `mail.co`). Such contacts get a 10-point confidence penalty and the UI shows
-  "Guessed". A wrong domain also wastes a Hunter search. An option is to spend Hunter only on
-  `domainInPost` domains, which would save searches but find fewer people; it's left as the default
-  above, and noted in Follow Ups.
-- **Name parsing:** Filipino compound surnames ("Dela Cruz", "De los Santos") take the last token
-  ("cruz"), which is probably wrong for `{last}`. It's an accepted limitation of guessing; the "Guessed"
-  label covers it.
-- **`structuredOutput` with empty-string sentinels:** the scoring schema has no nullable fields, so
-  this follows its style instead of relying on `type: ["string","null"]` support in `--json-schema`,
-  which hasn't been checked.
+- **Contract uncertainty (Hunter):** the biggest risk in the plan. Field names, the quota status codes
+  and the credit cost per call are all unverified. Lenient parsing plus Step 8.2 (a recorded fixture,
+  then fixing the parser and tests against it) is the mitigation the repo learned from JSearch.
+- **Free-plan arithmetic:** with about 25 searches a month (unverified) and 3 saved jobs a day
+  (about 90 a month), Hunter covers roughly 1 job in 4 even with perfect spreading. Real emails only
+  means **many jobs will honestly show "No email found"**: every job whose post prints no address
+  once the day's searches are spent. That's the owner's choice, not a defect. The Telegram line shows
+  it daily, and "Find people" can spend a search on one job.
+- **Hunter's own answers aren't all "seen" addresses:** Hunter's email finder and domain search return
+  a confidence score, and Hunter may derive some addresses from the company's pattern itself (from
+  its documentation as I remember it; unverified). They count as "returned by Hunter" under the
+  owner's rule, and the label shows the score. Whether to set a minimum score is Follow Ups Question 1.
+- **Claude-inferred domains:** guarded by `sameOrganization`. A wrong domain costs one search and
+  yields nothing. `mentions()` may miss real matches ("Mail Co" vs "MailCo Inc."), which yields "No email
+  found" rather than a wrong person. That's the safe direction.
+- **Email-less named people** aren't stored (design table), so the panel never shows a name it can't
+  send to.
 - **Prompt injection:** the posting is wrapped as data with the same sentence `scoring.ts` uses.
   `guardFacts` is the hard defence: an injected "email me at x@evil" survives only if it's literally in
   the posting, and then it's correctly labelled "From the job post".
-- **New pattern:** `HunterAccess` is an injected interface, like `Scorer` in `scoring.ts` and the
-  `lookUp` option in `verify.ts`, so tests need no network. Not new.
+- **New pattern:** `HunterAccess` is an injected interface, like `Scorer` and `verify.ts`'s `lookUp`. Not new.
 
-**Issues identified:** Hunter contract unverified (Step 8.2); low Hunter coverage on the free plan;
-domain inference can be wrong.
+**Issues identified:** Hunter contract unverified (Step 8.2); low Hunter coverage on the free plan, so
+many jobs show "No email found".
+
 ### Phase 4: Drafts (7.3)
 
 #### Step 4.1: Draft, check and save one job's outreach
@@ -1540,7 +1523,7 @@ budget is counted from `worker_runs.hunter_lookups` plus `outreach_requests.hunt
 + export const monthlyLimit = () => Number(process.env.HUNTER_MONTHLY_SEARCHES) || DEFAULT_MONTHLY_SEARCHES;
 +
 + /**
-+  * Hunter with a budget of `allowed` searches; null without HUNTER_API_KEY (pattern guesses only).
++  * Hunter with a budget of `allowed` searches; null without HUNTER_API_KEY (contacts from the job post only).
 +  * `used()` counts every search started, so a job that fails after its lookups still has them counted.
 +  */
 + export function hunterAccess(allowed: number): (HunterAccess & { used(): number }) | null {
@@ -1645,15 +1628,27 @@ budget is counted from `worker_runs.hunter_lookups` plus `outreach_requests.hunt
 **File:** `worker/src/outreach.test.ts`
 **Verify:** `npx vitest run worker/src/outreach.test.ts`
 
-The owner's required test, "no-invention check rejects an email draft mentioning a skill not in the
-master CV", end to end through `draftEmail` with a fake Claude Code. The envelope shape is the one
+The owner's required tests: "no-invention check rejects an email draft mentioning a skill not in the
+master CV", end to end through `draftEmail` with a fake Claude Code; and the second half of "no real
+email → no contact and no draft" (`outreachForJob` with `findContacts` faked to find no one). The draft
+tests pass `ask` explicitly, so mocking `askClaudeCode` doesn't affect them. The envelope shape is the one
 recorded in `worker/fixtures/claude-output.json` (`type`, `subtype`, `is_error`, `structured_output`).
 
 ```diff
 + import { describe, expect, it, vi } from "vitest";
 + import type { MasterCv } from "@/lib/master-cv";
++ import { askClaudeCode } from "./scoring";
 + import type { Candidate, PostingFacts } from "./contacts";
-+ import { draftEmail } from "./outreach";
++ import type { Db } from "./db";
++ import { draftEmail, outreachForJob } from "./outreach";
++
++ // outreachForJob's posting read and contact search, faked: no real email was found for this job.
++ vi.mock("./contacts", async (original) => ({
++   ...(await original<typeof import("./contacts")>()),
++   readPosting: vi.fn(async () => ({ domain: "mail.test", domainInPost: true, team: null, people: [], skills: [] })),
++   findContacts: vi.fn(async () => []),
++ }));
++ vi.mock("./scoring", async (original) => ({ ...(await original<typeof import("./scoring")>()), askClaudeCode: vi.fn() }));
 +
 + const master: MasterCv = {
 +   name: "Sample Owner",
@@ -1667,7 +1662,7 @@ recorded in `worker/fixtures/claude-output.json` (`type`, `subtype`, `is_error`,
 +   certifications: [],
 + };
 + const job = { id: "j1", company: "Mail Co", role: "Frontend Engineer", description: "We use React, TypeScript and GraphQL." };
-+ const contact: Candidate = { name: "Ana Cruz", title: "Technical Recruiter", email: "ana.cruz@mail.test", source: "guessed", confidence: 45, tier: 1 };
++ const contact: Candidate = { name: "Ana Cruz", title: "Technical Recruiter", email: "ana.cruz@mail.test", source: "hunter", confidence: 92, tier: 1 };
 + const facts: PostingFacts = { domain: "mail.test", domainInPost: true, team: null, people: [], skills: ["React", "TypeScript", "GraphQL"] };
 +
 + const answer = (subject: string, body: string) =>
@@ -1702,6 +1697,20 @@ recorded in `worker/fixtures/claude-output.json` (`type`, `subtype`, `is_error`,
 +   it("rejects a body over the length limit", async () => {
 +     const ask = vi.fn(async () => answer("Frontend Engineer role", `${good}\n${"I enjoy React. ".repeat(80)}`));
 +     await expect(draftEmail(master, job, contact, facts, ask)).rejects.toThrow(/keep it under/);
++   });
++
++   it("never drafts without a real email: no contact means no draft and no Claude call", async () => {
++     const writes: string[] = [];
++     const db = {
++       from: (table: string) => ({
++         delete: () => ({ eq: async () => (writes.push(`delete ${table}`), { error: null }) }),
++         insert: () => { throw new Error(`unexpected insert into ${table}`); },
++         upsert: () => { throw new Error(`unexpected upsert into ${table}`); },
++       }),
++     } as unknown as Db;
++     expect(await outreachForJob(db, master, job, null)).toEqual({ drafted: false });
++     expect(writes).toEqual(["delete job_contacts"]);
++     expect(askClaudeCode).not.toHaveBeenCalled();
 +   });
 +
 +   it("tells Claude which job skills the CV doesn't support", async () => {
@@ -1902,7 +1911,7 @@ requests (stage 7)."
   …
 +
 + # Optional: Hunter.io's free API, to find people to email about each saved job (see worker/README.md
-+ # step 6e). Without it, emails are guessed from the company's usual pattern and marked "guessed".
++ # step 6e). Without it, only addresses printed in the job post are used. Emails are never guessed.
 + # The app never sends email: you press Send in Gmail yourself.
 + HUNTER_API_KEY=
 + # Free searches a month on your Hunter plan (default 25). Check the number on Hunter's account page.
@@ -1914,12 +1923,12 @@ voice as 6b–6d:
 - What it does: for each saved job, the finder looks for up to 2 people to email and writes a short
   draft. The app's **Send email** button opens it in Gmail; you read it, change anything, and press
   Send. Nothing is sent for you.
-- Where people come from: the job post itself, Hunter.io's free plan (sign up, copy the API key into
-  `HUNTER_API_KEY` in `worker/.env`), or a guess from the company's usual email pattern, shown as
-  **Guessed**. Never LinkedIn.
+- Where addresses come from: real ones only. Either the job post prints it, or Hunter.io's free plan
+  returns it (sign up, then copy the API key into `HUNTER_API_KEY` in `worker/.env`). An address is
+  never guessed. Never LinkedIn.
 - The free plan is small (about 25 searches a month; check yours), so the finder spreads them over
-  the month and guesses the rest. Expect some jobs to say **No contact found**. **Find people** asks
-  your Mac to try again for that job.
+  the month. Many jobs will honestly say **No email found**. **Find people** asks your Mac to spend a
+  search on that one job.
 - **Find people** and **Use this person** run on your Mac, like **Find jobs now**: it has to be awake
   with `npm run schedule` installed.
 - The README's step 2 ("Update the online database") already covers `npx supabase db push`, so it
@@ -1981,8 +1990,8 @@ so each one checks the owner and validates ids.
 + }
 +
 + /**
-+  * "I sent it": the database stamps sent_at, and the job page's timeline shows it (open decision D1).
-+  * The job's status is not changed (open decision D11).
++  * "I sent it": the database stamps sent_at, and the job page's timeline shows it (owner decision D1).
++  * The job's status is not changed (owner decision D11).
 +  */
 + export async function markSent(emailId: string): Promise<OutreachResult> {
 +   if (!isId(emailId)) return { error: "Unknown email." };
@@ -2138,9 +2147,9 @@ The waiting state copies `FinderPanel`'s pattern (`references/finder-panel-revie
 +   return (
 +     <div className="flex flex-col items-start gap-1">
 +       <div className="flex flex-wrap items-center gap-2">
-+         <button type="button" disabled className="btn whitespace-nowrap opacity-60" title="No contact found">
++         <button type="button" disabled className="btn whitespace-nowrap opacity-60" title="No real email address found for this job">
 +           <Mail className="size-4" aria-hidden="true" />
-+           No contact found
++           No email found
 +         </button>
 +         <button type="button" onClick={() => ask(null)} disabled={busy} className="text-sm font-medium text-accent hover:underline disabled:opacity-60">
 +           <Search className="mr-1 inline size-3.5" aria-hidden="true" />
@@ -2213,8 +2222,8 @@ in a server component.
 Checked in the browser (Step 8.1). There's no separate mechanical check: its pure parts are covered
 by Step 2.2.
 
-The panel shows who the email is to (name, title, address, and a "From the job post" / "Found by
-Hunter (N%)" / "Guessed" label, with guessed in the warning colour), the draft text, the Send button,
+The panel shows who the email is to (name, title, address, and a "From the job post" or "Found by
+Hunter (N% sure)" label), the draft text, the Send button,
 "I sent it", the backup contact with "Use this person" (which redrafts on the Mac), and the follow-up
 when one exists.
 
@@ -2225,7 +2234,7 @@ when one exists.
 +
 + import { useRouter } from "next/navigation";
 + import { useState, useTransition } from "react";
-+ import { CONTACT_LABELS, type OutreachEmail, type RequestState } from "@/lib/outreach";
++ import { contactLabel, type OutreachEmail, type RequestState } from "@/lib/outreach";
 + import type { Tables } from "@/lib/supabase/types";
 + import { markSent } from "../outreach-actions";
 + import { RequestStatus, SendEmailButton, useOutreachRequest } from "../send-email-button";
@@ -2234,18 +2243,13 @@ when one exists.
 + type Email = Pick<OutreachEmail, "id" | "kind" | "to_email" | "to_name" | "subject" | "body" | "status" | "sent_at"> & { contact_id: string | null };
 +
 + function ContactLine({ contact }: { contact: Contact }) {
-+   const guessed = contact.source === "guessed";
 +   return (
 +     <div className="text-sm">
 +       <div className="font-medium">{contact.name}{contact.title && <span className="font-normal text-muted"> · {contact.title}</span>}</div>
 +       <div className="flex flex-wrap items-center gap-2">
 +         <span className="break-all">{contact.email}</span>
-+         <span className={`chip ${guessed ? "bg-warn-soft text-warn" : ""}`}>
-+           {CONTACT_LABELS[contact.source]}
-+           {contact.source === "hunter" && contact.confidence != null && ` (${contact.confidence}%)`}
-+         </span>
++         <span className="chip">{contactLabel(contact.source, contact.confidence)}</span>
 +       </div>
-+       {guessed && <p className="mt-1 text-xs text-muted">This address is a guess from the company&apos;s usual pattern. It may bounce.</p>}
 +     </div>
 +   );
 + }
@@ -2330,7 +2334,7 @@ when one exists.
 ```
 
 `src/app/(app)/jobs/[id]/page.tsx`: three more reads, the panel in the right column under Status,
-and the timeline drawn from `timelineEntries` (D1, default A):
+and the timeline drawn from `timelineEntries` (owner decision D1):
 
 ```diff
 - import { ArrowLeft, ExternalLink } from "lucide-react";
@@ -2443,7 +2447,7 @@ import; `timelineEntries` uses it now.
 - **Hydration:** `composeLink` is pure. The only client-only input is the user agent, read through
   `useSyncExternalStore` with a server snapshot of `false`. On an iPhone, the link switches to `mailto:`
   right after hydration.
-- **Accessibility:** the disabled "No contact found" button carries the text itself. Status lines use
+- **Accessibility:** the disabled "No email found" button carries the text itself. Status lines use
   `role="status"`, like `FinderPanel`.
 - **Layering:** all data shaping (`composeLink`, `requestState`, `timelineEntries`) is in `src/lib`.
   Components only render.
@@ -2460,7 +2464,7 @@ checked in the browser in Step 8.1.
 **File:** `src/app/api/cron/ghosting/route.ts`
 **Verify:** `npm run typecheck`
 
-This is open decision D4, default A. Today the route only calls `mark_ghosted_jobs()`, and the
+This is owner decision D4. Today the route only calls `mark_ghosted_jobs()`, and the
 dashboard's application reminder is a view (`follow_up_jobs`), not cron output (`references/
 20260928000300_settings-review.sql`). Here the cron also writes a template follow-up for each row of
 `outreach_follow_ups_due`. The route-handler shape (GET, `CRON_SECRET`, `Response.json`) stays as it
@@ -2489,7 +2493,7 @@ handler's signature doesn't change.
 -   return Response.json({ ghosted });
 +
 +   // 7.6: a follow-up draft to the same person for each first email sent 5+ days ago with no reply.
-+   // A fixed template (open decision D4): it makes no claim about the CV, and Vercel has no Claude Code.
++   // A fixed template (owner decision D4): it makes no claim about the CV, and Vercel has no Claude Code.
 +   const [due, settings] = await Promise.all([
 +     db.from("outreach_follow_ups_due").select("*"),
 +     db.from("settings").select("master_cv").single(),
@@ -2574,10 +2578,7 @@ job and a **Send follow-up** button. Only unsent follow-ups on jobs that still h
 
 #### Phase 7 — Potential Issues
 
-- **This phase depends on D4.** If the owner picks B (nothing stored), Step 7.1 is dropped. The
-  dashboard then reads `outreach_follow_ups_due` directly and builds the link with `followUpDraft` when it
-  renders, which needs a click-time insert so opened/sent can be recorded. If the owner picks C, the
-  draft moves to `outreach.ts` on the Mac.
+- **Owner decision D4 (A)** settles the mechanism: the cron writes a template draft.
 - **Up to a day late:** the cron runs at 01:00 UTC (`vercel.json`, 09:00 in Manila). A send on day 0
   gets its follow-up on the first cron run after day 5.
 - **`jobs!inner` embed typing:** with `!inner`, supabase-js types `email.jobs` as a single object,
@@ -2585,20 +2586,20 @@ job and a **Send follow-up** button. Only unsent follow-ups on jobs that still h
   name the types show.
 - **Empty owner name:** with no master CV, the template ends with a blank sign-off line. The owner sees
   it in Gmail and can add a name. Every other outreach path needs a CV anyway.
-- **Ghosted jobs:** they still get follow-ups (ghosted isn't a reply). Consistent with D7, default A.
+- **Ghosted jobs:** they still get follow-ups (ghosted isn't a reply). Consistent with owner decision D7.
 - **Vercel function time:** a handful of inserts, well within limits.
 - **Layering:** the template is built in `src/lib/outreach.ts`, so the route only moves data.
 - **New pattern:** the cron route writing app data (until now it only called an RPC). The
   alternative, a SQL function building email text, would put copy in SQL. Deliberate: the template stays
   pure and tested.
 
-**Issues identified:** D4 must be answered before this phase.
+**Issues identified:** None blocking.
 ### Phase 8: Live checks, the owner's first run, and docs
 
 #### Step 8.1: Local end-to-end check (implementer)
 
-The local stack, a keyword dry run, a real local run with `HUNTER_API_KEY` empty (pattern guesses
-only), then the button in a browser.
+The local stack, a keyword dry run, a real local run with `HUNTER_API_KEY` empty (addresses printed
+in the post only), then the button in a browser.
 
 Needs Docker and Claude Code. If the implementer's sandbox has neither (Docker wasn't running in the
 planning sandbox), report this step as **not done** rather than claiming it. Checks, each with what it
@@ -2607,14 +2608,15 @@ showed:
 2. `cd worker && npm run dev -- --dry-run`: prints "Dry run" with no outreach stage work, and
    `worker_runs.hunter_lookups = 0`.
 3. A real local run (`npm run dev`, `SCORER=keywords` is fine, `HUNTER_API_KEY` empty): each saved job
-   gets `job_contacts` rows only if its post names someone or prints an address. Every draft passes
+   gets `job_contacts` rows only if its post prints an address, and every other job has no contact and
+   no draft (never an invented address). Every draft passes
    `findEmailInventions` (re-run it on the saved rows in a scratch script) and contains no "—". The
    printed Telegram text has the "N jobs found, M emails ready to send." line. **Record how many drafts
    the no-invention check rejected, and why**: that's the measurement of the `namesIn` false-positive
    risk (Phase 2 issues).
 4. `.select()` after the ignore-duplicates upsert returned only the new jobs. A second run that saves
    nothing new drafts nothing.
-5. In the browser: Jobs list, with a button that opens Gmail and one "No contact found" row. Click Send →
+5. In the browser: Jobs list, with a button that opens Gmail and one "No email found" row. Click Send →
    the row's status is `opened` and the button says "Open again". Job page → "I sent it" → the timeline
    shows "Email sent" with the date, between the right status entries. "Use this person" and "Find
    people", with `FINDER_RUN_SCRIPT="dev -- --dry-run" npx tsx --env-file=.env.local src/watch.ts` run
@@ -2659,16 +2661,19 @@ also tries the button on their iPhone, if they use one (D9).
 **File:** `docs/ROADMAP.md`, `CONVENTIONS.md`
 **Verify:** `grep -q "outreach_emails" CONVENTIONS.md`
 
-- `docs/ROADMAP.md`: under Stage 7, record each open decision as the owner answered it ("*Decided
-  <date> (owner):* …"), and add Stage 7 to the "Settled on" paragraph. Boxes 7.1–7.6 are ticked only after
-  the stage's "Done when" (a real daily run leaves a ready draft on each saved job, and the button
-  opens it in Gmail with every field filled in) is seen on the owner's hosted run, as with Stage 5.
-  Update "Last updated".
+- `docs/ROADMAP.md`: the real-emails-only wording was already put into Stage 7 during planning
+  (2026-10-02). At build time, add the other settled answers (D1–D5, D7–D12) as one "*Decided
+  2026-10-02 (owner):*" line under Stage 7. Boxes 7.1–7.6 are ticked only after the stage's "Done
+  when" (a ready draft on each saved job with a real email, "No email found" on the rest, and the button
+  opening Gmail with every field filled in) is seen on the owner's hosted run, as with Stage 5. Update
+  "Last updated".
 - `CONVENTIONS.md`:
   - **State** line: Stage 7 built and verified locally, with the date.
   - **Product rules that must never be broken**, one new bullet: "**The app never sends an email.**
     Outreach drafts open in Gmail's compose page (or `mailto:`); the owner presses Send. Drafts pass the
-    no-invention check (`findEmailInventions` in `src/lib/outreach.ts`)."
+    no-invention check (`findEmailInventions` in `src/lib/outreach.ts`)." And a second: "**Real email
+    addresses only.** A contact's address is printed in the job post or returned by Hunter; it's
+    never built from a name or a pattern. With none, the app says "No email found"."
   - **Traps**, three bullets: "`outreach_emails` status changes only through its trigger's order
     (draft → opened → sent); the owner may update only `status`, and a sent email is frozen."; "Email
     sent is not a job status: the job page merges sent emails into its timeline (`timelineEntries`)";
@@ -2717,29 +2722,26 @@ Its `generateChecked` loop is mirrored in `worker/src/outreach.ts`.
 
 ### Questions / Clarifications
 
-**For the owner, before Phase 3 (blocking):** D1 (timeline), D2 (spreading Hunter's searches), D3 (which
-Hunter calls), D4 (follow-up mechanism). See the Open decisions table. Each has a proposed default the
-diffs follow.
+**All twelve first-round decisions are settled** (section 1, owner, 2026-10-02).
 
-**For the owner, during the build:** D5 (generic addresses), D6 (default guessed pattern), D7 (what counts
-as a reply), D8 (Gmail link format; settled by Step 8.3), D9 (iPhone), D10 (labels/verification), D11
-("I sent it" and job status), D12 (follow-up threading).
+**New, found while revising (not blocking; the default is shown):**
+1. **A minimum Hunter score?** Hunter returns a confidence score with each address, and may itself
+   derive some addresses from the company's pattern (from its docs as I remember them; unverified).
+   Under "real emails only" these count as "returned by Hunter", and the label shows the score ("Found by
+   Hunter (62% sure)"). The default keeps every Hunter answer. The option is to drop answers below a
+   score, such as 70, which means more "No email found". Step 8.2's recorded answer will show what the
+   scores look like.
 
 **Also for the owner:**
-1. **Hunter's terms.** As with Anthropic's terms in Stage 5, the owner should confirm that Hunter's
+2. **Hunter's terms.** As with Anthropic's terms in Stage 5, the owner should confirm that Hunter's
    free plan allows this use (automated API lookups for one's own job outreach). I couldn't read their
    terms from the sandbox.
-2. **Expectation setting.** On the free plan, most contacts will be guessed, and some jobs will have
-   none (Phase 3 issues). If that's not acceptable, the options are a paid Hunter plan or verification
-   (D10). The plan doesn't choose.
-3. **Spend Hunter only on domains printed in the post?** That saves searches on wrong, inferred domains
-   but finds fewer people. Not in the defaults.
 
 **For the implementer (not blocking):**
-4. Check `referencedTable` against the installed `@supabase/postgrest-js`, and the `jobs!inner` embed
+3. Check `referencedTable` against the installed `@supabase/postgrest-js`, and the `jobs!inner` embed
    typing (Phases 6 and 7).
-5. Check `.select()` after an ignore-duplicates upsert returns only inserted rows (Step 8.1, check 4).
-6. If Docker isn't available, Phase 1's `db:reset`/`db:types`/`db:test` can't run. Stop and report it;
+4. Check `.select()` after an ignore-duplicates upsert returns only inserted rows (Step 8.1, check 4).
+5. If Docker isn't available, Phase 1's `db:reset`/`db:types`/`db:test` can't run. Stop and report it;
    don't hand-write `types.ts`.
 
 ### Issues Found
@@ -2749,12 +2751,13 @@ as a reply), D8 (Gmail link format; settled by Step 8.3), D9 (iPhone), D10 (labe
 | 1 | `npm run verify -- <file>` (the daily-finder plan's one-file idiom) can never pass since 2026-10-02: npm appends the file to `python3 -m unittest discover`, which fails (measured 2026-10-02) | Medium | Fixed by Step 1.1 (allowlist `npx vitest run`, mark the old idiom unsatisfiable); CONVENTIONS trap in Step 8.4 |
 | 1 | Docker daemon not running in the planning sandbox (2026-10-02), so `db:reset`, `db:types` and `db:test` couldn't be run while planning | Medium | Open: environment, not code |
 | 3 | Hunter's API shape, quota codes, pattern format and free-plan limits are unverified (hunter.io blocked by the sandbox proxy, 2026-10-02) | High | Open: Step 8.2 records real answers |
-| 3 | On the free plan (about 25 searches a month, unverified) Hunter can cover roughly 1 in 4 saved jobs; most contacts will be guessed, some jobs none | Medium | Open: owner expectation, D2/D10 |
+| 3 | On the free plan (about 25 searches a month, unverified) Hunter can cover roughly 1 in 4 saved jobs; with real emails only, many jobs will show "No email found" | Medium | Accepted by the owner (real emails only, 2026-10-02) |
+| 3 | Hunter may itself derive some addresses from a pattern; they're labelled with Hunter's score | Low | Open: Questions 1 (minimum score) | |
 | 2 | Gmail compose URL length limit not measured; 2,000 chosen from secondary sources | Medium | Open: Step 8.3 |
-| 2 | A Simon Willison note says `view=cm`/`fs=1` were replaced by `tf=cm` (undated), and that the link doesn't open the compose page on iPhone Safari | Medium | Open: D8, D9, Step 8.3 |
+| 2 | A Simon Willison note says `view=cm`/`fs=1` were replaced by `tf=cm` (undated), and that the link doesn't open the compose page on iPhone Safari | Medium | Settled: D8 (owner's format, checked in Step 8.3), D9 (`mailto:` on iPhone/iPad) |
 | 2 | `namesIn` may reject faithful emails that name the team, a product or a weekday; the yield of drafts is unmeasured | Medium | Open: measured in Step 8.1 check 3 |
 | 4 | `generateChecked` and the `RULES` text can't be shared with the worker (`server-only`), so the loop and wording are mirrored | Low | Open: Stage 6 moves tailoring to the worker and can merge them |
 | 5 | Outreach can add up to about 10 minutes to a run; a run near 45 minutes would show as crashed (`STALE_RUN_MS`) | Low | Open: watch in Step 8.2 |
 | 5 | "Find people" requests wait behind a "Find jobs now" run that `watch.ts` started | Low | Accepted: the waiting copy says so |
-| 7 | Follow-up drafts appear up to a day late (once-a-day cron) | Low | Accepted with D4 default A |
-| — | Hunter's terms of service not read (blocked) | Medium | Open: owner confirms (Questions 1) |
+| 7 | Follow-up drafts appear up to a day late (once-a-day cron) | Low | Accepted with owner decision D4 |
+| — | Hunter's terms of service not read (blocked) | Medium | Open: owner confirms (Questions 2) |
