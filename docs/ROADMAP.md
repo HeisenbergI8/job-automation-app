@@ -145,6 +145,38 @@ the owner's subscription, the same way 5.5 scores. Stage 5 leaves `src/lib/claud
 
 *Stage done when:* several dry runs look right before the first real submission.
 
+## Stage 7: Outreach emails, sent by the owner **[plan]**
+
+*Owner request 2026-10-02, built before stage 6 at the owner's direction.* For each saved job, the
+finder finds people to email and drafts one email. The app opens it in Gmail's compose page and the
+owner presses Send. **The app never sends an email itself.**
+
+*Decided 2026-10-02 (owner):* a warm, direct tone; up to 2 contacts per job; Hunter.io's free API
+first, with a guessed email pattern (marked "guessed") as the backup; never scraping LinkedIn or any
+site that forbids it. Work started by a click ("Find people", picking another contact) runs on the
+Mac through Claude Code headless, like "Find jobs now", not on the paid API.
+
+- [ ] **7.1 Schema.** `job_contacts` and `outreach_emails`, with row-level security, and the Hunter
+  lookups a run used in `worker_runs`.
+- [ ] **7.2 Contacts.** Claude Code reads the saved job description for the company's email domain,
+  team and any named recruiter. Hunter's domain search and email finder, then a guessed pattern.
+  Ranked: the recruiter named in the post, then a manager on that team, then a general recruiter.
+  Only for the day's saved jobs, skipping quietly once the free limit is used up.
+- [ ] **7.3 Drafts.** One short email per job for the best contact (subject plus 5 to 7 lines: the
+  exact role, one or two real CV points, a polite ask), passed through the no-invention check
+  (`src/lib/tailoring/check.ts`). No em dashes.
+- [ ] **7.4 The button.** "Send email" on the Jobs list and the job page opens a Gmail compose link
+  (with a `mailto:` fallback when too long), and marks the email opened. "I sent it" marks it sent,
+  with a dated timeline entry. With no contact: greyed out, "No contact found", "Find people".
+- [ ] **7.5 Job page.** Who it's addressed to (confirmed or guessed), and picking another contact,
+  which redrafts the email for that person.
+- [ ] **7.6 Follow-ups and Telegram.** A sent email with no reply after 5 days shows a reminder on the
+  dashboard (the ghosting cron) and offers a short follow-up draft. The daily message says how many
+  emails are ready.
+
+*Stage done when:* a real daily run leaves a ready draft on each saved job, and the button opens it in
+Gmail with every field filled in.
+
 ---
 
 ## Open decisions
@@ -165,6 +197,8 @@ Notifications go to Telegram (5.6). The worker runs at 8:00, 13:00 and 18:00 via
 the first run of the day only (5.1). OnlineJobs.ph's public job search is read directly (robots.txt allows it,
 crawl delay 5s). The owner's own LinkedIn, JobStreet, Indeed and OnlineJobs.ph job-alert emails
 are read from Gmail (read-only) as a source (5.3).
-Settled on 2026-10-02: the finder's own Python search of free job APIs runs every run, and scraping
+Settled on 2026-10-02: outreach emails (stage 7) are drafted by the finder and only ever sent by the
+owner from Gmail; warm and direct, up to 2 contacts per job, Hunter.io then a guessed pattern, and
+click-started work runs on the Mac. The finder's own Python search of free job APIs runs every run, and scraping
 LinkedIn, Indeed and Glassdoor directly is an opt-in setting, off by default (5.3). Tailoring moves
 off the paid API to Claude Code as part of stage 6.
