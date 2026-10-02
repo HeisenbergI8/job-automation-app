@@ -34,6 +34,7 @@ describe("parseOwnSearch", () => {
 
   it("throws on output that isn't an answer", () => {
     expect(() => parseOwnSearch("Traceback (most recent call last):")).toThrow();
+    expect(() => parseOwnSearch('{"jobs": 1}')).toThrow("it isn't a list of jobs");
   });
 });
 

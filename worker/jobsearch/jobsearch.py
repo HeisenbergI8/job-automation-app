@@ -90,13 +90,13 @@ def iso(value) -> str | None:
     try:
         if isinstance(value, (int, float)):
             return None if math.isnan(value) else datetime.fromtimestamp(value, timezone.utc).isoformat()
-        if isinstance(value, datetime):
-            return value.astimezone(timezone.utc).isoformat()
+        if isinstance(value, datetime):  # pandas Timestamps too; naive means UTC, as for text below
+            return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).astimezone(timezone.utc).isoformat()
         if isinstance(value, date):
             return datetime(value.year, value.month, value.day, tzinfo=timezone.utc).isoformat()
         parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
         return (parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)).astimezone(timezone.utc).isoformat()
-    except (ValueError, OverflowError, OSError):
+    except (ValueError, TypeError, OverflowError, OSError):
         return None
 
 
@@ -314,6 +314,7 @@ def main() -> None:
     parser.add_argument("--remote", action="store_true", help="Remote jobs only")
     parser.add_argument("--days", type=int, default=3, help="Posted in the last N days (default 3)")
     args = parser.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # launchd may start Python without a UTF-8 locale
     json.dump(search(args.query, args.country.lower(), args.remote, args.days), sys.stdout, ensure_ascii=False)
 
 

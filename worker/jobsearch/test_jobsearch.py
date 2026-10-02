@@ -39,6 +39,8 @@ class Helpers(unittest.TestCase):
         self.assertEqual(jobsearch.iso("2026-10-01T08:00:00Z"), "2026-10-01T08:00:00+00:00")
         self.assertEqual(jobsearch.iso(date(2026, 10, 1)), "2026-10-01T00:00:00+00:00")
         self.assertIsNone(jobsearch.iso("yesterday"))
+        # A naive datetime is UTC whatever the Mac's timezone, like naive text.
+        self.assertEqual(jobsearch.iso(datetime(2026, 10, 1, 8)), "2026-10-01T08:00:00+00:00")
 
     def test_hybrid_is_not_remote(self):
         job = jobsearch.posting("x", "https://x", "Acme", "AI Engineer (Hybrid)", "Manila", "", True, None)

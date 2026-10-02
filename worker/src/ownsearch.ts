@@ -32,7 +32,9 @@ const answer = z.object({ jobs: z.array(z.unknown()), errors: z.array(z.string()
 
 /** The script's output. Jobs that don't fit are left out and counted, so one odd job doesn't cost the rest. */
 export function parseOwnSearch(stdout: string): { postings: Posting[]; errors: string[] } {
-  const { jobs, errors } = answer.parse(JSON.parse(stdout));
+  const parsed = answer.safeParse(JSON.parse(stdout));
+  if (!parsed.success) throw new Error("it isn't a list of jobs");
+  const { jobs, errors } = parsed.data;
   const postings = jobs.flatMap((item) => {
     const checked = job.safeParse(item);
     return checked.success ? [checked.data] : [];
