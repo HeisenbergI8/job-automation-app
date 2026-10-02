@@ -18,14 +18,14 @@ const COUNTRY_CODES: Record<string, string> = {
 
 export type Search = { role: string; country: string };
 
-/** Today's searches: every target role in every country the owner listed, rotated by day, at most MAX_QUERIES. */
-export function todaysSearches(criteria: Pick<Criteria, "target_roles" | "locations">, day = new Date()) {
+/** Today's searches: every target role in every country the owner listed, rotated by day, at most `max`. */
+export function todaysSearches(criteria: Pick<Criteria, "target_roles" | "locations">, day = new Date(), max = MAX_QUERIES) {
   const countries = [...new Set(criteria.locations.map((place) => COUNTRY_CODES[place.trim().toLowerCase()]).filter(Boolean))];
   const all: Search[] = criteria.target_roles.flatMap((role) => (countries.length ? countries : ["ph"]).map((country) => ({ role, country })));
-  if (all.length <= MAX_QUERIES) return all;
+  if (all.length <= max) return all;
   const dayNumber = Math.floor(day.getTime() / 86_400_000);
-  const start = (dayNumber * MAX_QUERIES) % all.length;
-  return Array.from({ length: MAX_QUERIES }, (_, index) => all[(start + index) % all.length]);
+  const start = (dayNumber * max) % all.length;
+  return Array.from({ length: max }, (_, index) => all[(start + index) % all.length]);
 }
 
 type JSearchJob = {

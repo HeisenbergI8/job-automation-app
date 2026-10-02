@@ -1,5 +1,5 @@
 // ROADMAP stage 5: the daily finder. Reads the company career pages in Settings and, with a JSearch key,
-// LinkedIn/Indeed/JobStreet via JSearch, OnlineJobs.ph's job search and the owner's job-alert emails; skips jobs already saved or already scored; removes duplicates,
+// LinkedIn/Indeed/JobStreet via JSearch, its own search of free job APIs (ownsearch.ts), OnlineJobs.ph's job search and the owner's job-alert emails; skips jobs already saved or already scored; removes duplicates,
 // scores, checks the best against their full postings (verify.ts), saves up to 3 that pass as `found`, logs the run in
 // worker_runs and tells the owner on Telegram.
 //   npm start        hosted project (worker/.env); what the daily schedule runs
@@ -14,6 +14,7 @@ import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
 import { claudeCodeScorer, rank, type Ranked } from "./scoring";
 import { LOOKUPS_PER_DAY, lookUpPosting, searchJSearch, todaysSearches } from "./jsearch";
 import { searchOnlineJobs } from "./onlinejobs";
+import { MAX_SEARCHES, searchOwn } from "./ownsearch";
 import { fetchBoard, type Posting } from "./sources";
 import { toRemember, verifyPicks, type Checked } from "./verify";
 
@@ -113,6 +114,24 @@ async function findJobs(errors: string[]) {
 
   const fromJSearch = postings.length - fromCareerPages;
 
+  // The finder's own search (worker/jobsearch/jobsearch.py): free job APIs, and LinkedIn, Indeed and
+  // Glassdoor too when SCRAPE_JOB_SITES=true. No monthly limit, so every run, dry runs included. A
+  // source that fails fails the same way on every search, so each message is reported once.
+  const ownErrors = new Set<string>();
+  for (const search of todaysSearches(settings.data, new Date(), MAX_SEARCHES)) {
+    try {
+      const found = await searchOwn(search, settings.data.remote_preference === "remote");
+      console.log(`Own search "${search.role}" (${search.country}): ${found.postings.length} jobs`);
+      postings.push(...found.postings);
+      for (const problem of found.errors) ownErrors.add(`Own search: ${problem}`);
+    } catch (error) {
+      ownErrors.add(`Own search "${search.role}" (${search.country}): ${message(error)}`);
+      if (/isn't installed/.test(message(error))) break;
+    }
+  }
+  errors.push(...ownErrors);
+  const fromOwnSearch = postings.length - fromCareerPages - fromJSearch;
+
   // OnlineJobs.ph: its public job search, one search per target role (its alert emails are read below too).
   await stage("onlinejobs");
   const onlineJobs = await searchOnlineJobs(settings.data.target_roles, errors);
@@ -133,7 +152,7 @@ async function findJobs(errors: string[]) {
     }
   }
   console.log(
-    `Read ${fromCareerPages} from career pages, ${fromJSearch} from JSearch, ${onlineJobs.length} from OnlineJobs.ph and ${postings.length - fromCareerPages - fromJSearch - onlineJobs.length} from ${alertEmails.length} new job-alert emails.`,
+    `Read ${fromCareerPages} from career pages, ${fromJSearch} from JSearch, ${fromOwnSearch} from the own search, ${onlineJobs.length} from OnlineJobs.ph and ${postings.length - fromCareerPages - fromJSearch - fromOwnSearch - onlineJobs.length} from ${alertEmails.length} new job-alert emails.`,
   );
 
   // Only jobs posted in the last week, minus saved jobs and jobs Claude already scored.

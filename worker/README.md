@@ -12,7 +12,7 @@ Once a day, on your Mac, this:
 It also messages you when a job is marked **Needs manual**.
 
 It reads company career pages (Greenhouse, Lever and Ashby) and, with a free JSearch key (step 6b),
-LinkedIn, Indeed, JobStreet and other job sites, plus OnlineJobs.ph's job search. Jobs it has already reviewed are skipped, so each
+LinkedIn, Indeed, JobStreet and other job sites, its own search of free job sites (step 6d), plus OnlineJobs.ph's job search. Jobs it has already reviewed are skipped, so each
 run looks at new ones.
 
 ## One-time setup
@@ -104,6 +104,33 @@ target roles in the countries you listed, remote only, posted in the last 3 days
 4. Open `worker/.env` and paste it after `JSEARCH_API_KEY=`. Save.
 
 Without a key, the finder simply skips this step.
+
+### 6d. The finder's own job search (no setup; optional extras)
+
+Besides JSearch, the finder has its own search, a Python script (`worker/jobsearch/jobsearch.py`)
+with no monthly limit. On every run it searches your target roles (up to 6 role-and-country
+combinations, rotating by day) on these free job sites:
+
+- **Remotive, RemoteOK, Himalayas and Jobicy**: remote job boards. Nothing to set up. Jobs that are
+  only open to other countries ("USA only", "Europe") are left out.
+- **Jooble** (optional, free key): collects jobs from many local boards, including JobStreet.
+  Request a key at https://jooble.org/api/about, then paste it after `JOOBLE_API_KEY=` in `worker/.env`.
+
+It needs Python 3, which macOS asks to install the first time you type `python3` in Terminal.
+
+**LinkedIn, Indeed and Glassdoor directly (optional, off by default).** The script can also read
+these sites itself through the `python-jobspy` library. This breaks those sites' terms of use, and
+they can block your Mac's internet address for a while (LinkedIn does this quickly). Your job alerts
+(6c) are the safer way to get those jobs. If you still want it:
+
+    pip3 install python-jobspy
+
+then set `SCRAPE_JOB_SITES=true` in `worker/.env`. It needs Python 3.10 or newer (`python3 --version`).
+If yours is older, install Python from python.org or Homebrew and set `PYTHON_BIN` to its path.
+
+To try the search on its own:
+
+    python3 worker/jobsearch/jobsearch.py "AI Engineer" --country ph --remote
 
 ### 6c. Read your LinkedIn, JobStreet, Indeed and OnlineJobs.ph job alerts (recommended)
 
