@@ -84,9 +84,10 @@ export function followUpDraft(
   ownerName: string,
 ): Draft {
   const hello = first.to_name?.trim() ? `Hi ${first.to_name.trim().split(/\s+/)[0]},` : "Hi,";
+  // The role and company come from the job as saved, and job titles often hold em dashes.
   return {
-    subject: /^re:/i.test(first.subject) ? first.subject : `Re: ${first.subject}`,
-    body: [
+    subject: withoutDashes(/^re:/i.test(first.subject) ? first.subject : `Re: ${first.subject}`),
+    body: withoutDashes([
       hello,
       "",
       `I wanted to follow up on my earlier note about the ${first.role} role at ${first.company}. ` +
@@ -94,7 +95,7 @@ export function followUpDraft(
       "",
       "Thanks for your time,",
       ownerName,
-    ].join("\n"),
+    ].join("\n")),
   };
 }
 

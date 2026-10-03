@@ -112,6 +112,12 @@ describe("followUpDraft", () => {
     expect(draft.body).not.toContain("—");
     expect(draft.body.length).toBeLessThan(MAX_BODY_CHARS);
   });
+
+  it("keeps the owner's no-em-dash rule when the job title has one", () => {
+    const draft = followUpDraft({ to_name: null, subject: "Senior Engineer — Platform", company: "Acme — Labs", role: "Senior Engineer — Platform" }, "Sample Owner");
+    expect(`${draft.subject}${draft.body}`).not.toContain("—");
+    expect(draft.body).toContain("the Senior Engineer, Platform role at Acme, Labs.");
+  });
 });
 
 describe("timelineEntries", () => {

@@ -4,7 +4,8 @@
 // "Find people" and "Use this person" requests (stage 7).
 //   npm run watch    check once, against the hosted project (worker/.env)
 // FINDER_RUN_SCRIPT picks the npm script it starts (default "start"). To try it on the local stack
-// without saving or sending anything:
+// with a job search that saves and sends nothing (waiting "Find people" and "Use this person" requests
+// still run for real: they save contacts and drafts, and use Hunter searches when HUNTER_API_KEY is set):
 //   FINDER_RUN_SCRIPT="dev -- --dry-run" npx tsx --env-file=.env.local src/watch.ts
 import { spawn } from "node:child_process";
 import { mkdirSync, openSync } from "node:fs";
