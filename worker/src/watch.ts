@@ -1,6 +1,7 @@
 // Starts the finder when the owner presses "Find jobs now" in the app. launchd runs this every 30
 // seconds (npm run schedule); it exits at once when nothing is waiting. launchd never starts it again
-// while it is still running, so a run in progress holds back the next check.
+// while it is still running, so a run in progress holds back the next check. It also does the app's
+// "Find people" and "Use this person" requests (stage 7).
 //   npm run watch    check once, against the hosted project (worker/.env)
 // FINDER_RUN_SCRIPT picks the npm script it starts (default "start"). To try it on the local stack
 // without saving or sending anything:
@@ -9,6 +10,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, openSync } from "node:fs";
 import { join } from "node:path";
 import { createServiceClient } from "./db";
+import { handleOutreachRequests } from "./outreach";
 
 const db = createServiceClient();
 // A run still marked as running after this long crashed without saying so.
@@ -16,6 +18,14 @@ const STALE_MINUTES = 45;
 const WORKER = join(import.meta.dirname, "..");
 
 async function main() {
+  // "Find people" and "Use this person" (stage 7) first: they're quick, and a job search started
+  // below holds back every later check until it ends.
+  try {
+    await handleOutreachRequests(db);
+  } catch (error) {
+    console.error(`${new Date().toISOString()} Outreach requests:`, error);
+  }
+
   const { data: waiting, error } = await db
     .from("finder_requests")
     .select("id")

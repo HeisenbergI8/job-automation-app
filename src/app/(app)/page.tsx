@@ -5,6 +5,7 @@ import { formatDate, formatSalary, JOB_STATUSES } from "@/lib/jobs";
 import { requireOwner } from "@/lib/supabase/server";
 import { LineChart } from "./analytics/charts";
 import { CompanyMark } from "./jobs/company-mark";
+import { SendEmailButton } from "./jobs/send-email-button";
 import { StatusBadge } from "./jobs/status-badge";
 import { loadFinderState } from "./finder-state";
 import { FinderPanel } from "./finder-panel";
@@ -23,7 +24,7 @@ function SectionHeader({ title, href, linkLabel }: { title: string; href?: strin
 
 export default async function DashboardPage() {
   const supabase = await requireOwner();
-  const [{ data: jobs, error }, { data: events }, { data: settings }, { data: followUps }, { data: matches }, finder] = await Promise.all([
+  const [{ data: jobs, error }, { data: events }, { data: settings }, { data: followUps }, { data: matches }, finder, { data: emailFollowUps }] = await Promise.all([
     supabase.from("jobs").select("id, status, site, apply_method, date_applied, salary_min, salary_max, salary_currency"),
     supabase
       .from("job_status_events")
@@ -43,6 +44,14 @@ export default async function DashboardPage() {
       .order("fit_score", { ascending: false })
       .limit(3),
     loadFinderState(supabase),
+    // 7.6: follow-up drafts the ghosting cron wrote, not yet sent, on jobs that still have no reply.
+    supabase
+      .from("outreach_emails")
+      .select("id, to_email, to_name, subject, body, status, jobs!inner(id, company, role, status)")
+      .eq("kind", "follow_up")
+      .in("status", ["draft", "opened"])
+      .not("jobs.status", "in", "(screening,interview,offer,rejected)")
+      .order("created_at"),
   ]);
   if (error) throw error;
 
@@ -144,6 +153,27 @@ export default async function DashboardPage() {
         </section>
 
         <div className="flex flex-col gap-8">
+          {emailFollowUps?.length ? (
+            <section>
+              <SectionHeader title="Follow-up emails" />
+              <div className="card overflow-hidden p-0">
+                <ul className="divide-y divide-border text-sm">
+                  {emailFollowUps.map((email) => (
+                    <li key={email.id} className="flex items-center gap-3 px-5 py-3.5">
+                      <CompanyMark company={email.jobs.company} />
+                      <Link href={`/jobs/${email.jobs.id}`} className="min-w-0 flex-1 hover:underline">
+                        <span className="block truncate font-medium">{email.jobs.company}</span>
+                        <span className="block truncate text-xs text-muted">No reply from {email.to_name ?? email.to_email} after 5 days</span>
+                      </Link>
+                      <SendEmailButton jobId={email.jobs.id} email={email} request={{ kind: "none" }} label="Send follow-up" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="mt-2 text-xs text-muted">Mark it sent on the job&apos;s page once you&apos;ve sent it.</p>
+            </section>
+          ) : null}
+
           <section>
             <SectionHeader title="Follow up" />
             <div className="card overflow-hidden p-0">

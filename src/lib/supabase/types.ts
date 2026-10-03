@@ -93,6 +93,31 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"job_contacts": {
+                  Row: {
+                    "confidence": number | null,"created_at": string,"email": string,"id": string,"job_id": string,"name": string,"rank": number,"source": Database["public"]['Enums']["contact_source"],"title": string | null
+                  }
+                  Insert: {
+                    "confidence"?: number | null,"created_at"?: string,"email": string,"id"?: string,"job_id": string,"name": string,"rank": number,"source": Database["public"]['Enums']["contact_source"],"title"?: string | null
+                  }
+                  Update: {
+                    "confidence"?: number | null,"created_at"?: string,"email"?: string,"id"?: string,"job_id"?: string,"name"?: string,"rank"?: number,"source"?: Database["public"]['Enums']["contact_source"],"title"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "job_contacts_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "follow_up_jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "job_contacts_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"job_status_events": {
                   Row: {
                     "changed_at": string,"from_status": Database["public"]['Enums']["job_status"] | null,"id": string,"job_id": string,"note": string | null,"to_status": Database["public"]['Enums']["job_status"]
@@ -144,6 +169,68 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"outreach_emails": {
+                  Row: {
+                    "body": string,"contact_id": string | null,"created_at": string,"id": string,"job_id": string,"kind": Database["public"]['Enums']["outreach_kind"],"opened_at": string | null,"sent_at": string | null,"status": Database["public"]['Enums']["outreach_status"],"subject": string,"to_email": string,"to_name": string | null
+                  }
+                  Insert: {
+                    "body": string,"contact_id"?: string | null,"created_at"?: string,"id"?: string,"job_id": string,"kind"?: Database["public"]['Enums']["outreach_kind"],"opened_at"?: string | null,"sent_at"?: string | null,"status"?: Database["public"]['Enums']["outreach_status"],"subject": string,"to_email": string,"to_name"?: string | null
+                  }
+                  Update: {
+                    "body"?: string,"contact_id"?: string | null,"created_at"?: string,"id"?: string,"job_id"?: string,"kind"?: Database["public"]['Enums']["outreach_kind"],"opened_at"?: string | null,"sent_at"?: string | null,"status"?: Database["public"]['Enums']["outreach_status"],"subject"?: string,"to_email"?: string,"to_name"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "outreach_emails_contact_id_fkey"
+      columns: ["contact_id"]
+isOneToOne: false
+      referencedRelation: "job_contacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outreach_emails_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "follow_up_jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outreach_emails_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"outreach_requests": {
+                  Row: {
+                    "contact_id": string | null,"error": string | null,"finished_at": string | null,"hunter_lookups": number,"id": string,"job_id": string,"kind": Database["public"]['Enums']["outreach_request_kind"],"picked_up_at": string | null,"requested_at": string
+                  }
+                  Insert: {
+                    "contact_id"?: string | null,"error"?: string | null,"finished_at"?: string | null,"hunter_lookups"?: number,"id"?: string,"job_id": string,"kind": Database["public"]['Enums']["outreach_request_kind"],"picked_up_at"?: string | null,"requested_at"?: string
+                  }
+                  Update: {
+                    "contact_id"?: string | null,"error"?: string | null,"finished_at"?: string | null,"hunter_lookups"?: number,"id"?: string,"job_id"?: string,"kind"?: Database["public"]['Enums']["outreach_request_kind"],"picked_up_at"?: string | null,"requested_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "outreach_requests_contact_id_fkey"
+      columns: ["contact_id"]
+isOneToOne: false
+      referencedRelation: "job_contacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outreach_requests_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "follow_up_jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outreach_requests_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"processed_emails": {
                   Row: {
                     "jobs_found": number,"message_id": string,"processed_at": string,"site": string
@@ -185,13 +272,13 @@ isOneToOne: false
                   ]
                 },"worker_runs": {
                   Row: {
-                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"id": string,"jsearch_lookups": number,"jsearch_searches": number,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"stage": string | null,"started_at": string
+                    "dry_run": boolean,"errors": (string)[],"fetched": number,"finished_at": string | null,"hunter_lookups": number,"id": string,"jsearch_lookups": number,"jsearch_searches": number,"new_postings": number,"notified": boolean,"ok": boolean | null,"saved": number,"scored": number,"scorer": string | null,"stage": string | null,"started_at": string
                   }
                   Insert: {
-                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_lookups"?: number,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"stage"?: string | null,"started_at"?: string
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"hunter_lookups"?: number,"id"?: string,"jsearch_lookups"?: number,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"stage"?: string | null,"started_at"?: string
                   }
                   Update: {
-                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"id"?: string,"jsearch_lookups"?: number,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"stage"?: string | null,"started_at"?: string
+                    "dry_run"?: boolean,"errors"?: (string)[],"fetched"?: number,"finished_at"?: string | null,"hunter_lookups"?: number,"id"?: string,"jsearch_lookups"?: number,"jsearch_searches"?: number,"new_postings"?: number,"notified"?: boolean,"ok"?: boolean | null,"saved"?: number,"scored"?: number,"scorer"?: string | null,"stage"?: string | null,"started_at"?: string
                   }
                   Relationships: [
                     
@@ -205,6 +292,31 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"outreach_follow_ups_due": {
+                  Row: {
+                    "company": string | null,"contact_id": string | null,"id": string | null,"job_id": string | null,"role": string | null,"sent_at": string | null,"subject": string | null,"to_email": string | null,"to_name": string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "outreach_emails_contact_id_fkey"
+      columns: ["contact_id"]
+isOneToOne: false
+      referencedRelation: "job_contacts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outreach_emails_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "follow_up_jobs"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "outreach_emails_job_id_fkey"
+      columns: ["job_id"]
+isOneToOne: false
+      referencedRelation: "jobs"
+      referencedColumns: ["id"]
+    }
                   ]
                 }
           }
@@ -229,7 +341,7 @@ isOneToOne: false
       } }
           }
           Enums: {
-            "apply_method": "auto"|"manual","ats": "greenhouse"|"lever"|"ashby","document_kind": "cv"|"cover_letter"|"intro","intro_status": "pending"|"approved"|"rejected","job_status": "found"|"applied"|"needs_manual"|"screening"|"interview"|"offer"|"rejected"|"ghosted","remote_preference": "remote"|"hybrid"|"onsite"|"any"
+            "apply_method": "auto"|"manual","ats": "greenhouse"|"lever"|"ashby","contact_source": "hunter"|"job_post","document_kind": "cv"|"cover_letter"|"intro","intro_status": "pending"|"approved"|"rejected","job_status": "found"|"applied"|"needs_manual"|"screening"|"interview"|"offer"|"rejected"|"ghosted","outreach_kind": "first"|"follow_up","outreach_request_kind": "find_people"|"redraft","outreach_status": "draft"|"opened"|"sent","remote_preference": "remote"|"hybrid"|"onsite"|"any"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -345,7 +457,7 @@ export type CompositeTypes<
 export const Constants = {
   "public": {
           Enums: {
-            "apply_method": ["auto", "manual"],"ats": ["greenhouse", "lever", "ashby"],"document_kind": ["cv", "cover_letter", "intro"],"intro_status": ["pending", "approved", "rejected"],"job_status": ["found", "applied", "needs_manual", "screening", "interview", "offer", "rejected", "ghosted"],"remote_preference": ["remote", "hybrid", "onsite", "any"]
+            "apply_method": ["auto", "manual"],"ats": ["greenhouse", "lever", "ashby"],"contact_source": ["hunter", "job_post"],"document_kind": ["cv", "cover_letter", "intro"],"intro_status": ["pending", "approved", "rejected"],"job_status": ["found", "applied", "needs_manual", "screening", "interview", "offer", "rejected", "ghosted"],"outreach_kind": ["first", "follow_up"],"outreach_request_kind": ["find_people", "redraft"],"outreach_status": ["draft", "opened", "sent"],"remote_preference": ["remote", "hybrid", "onsite", "any"]
           }
         }
 } as const

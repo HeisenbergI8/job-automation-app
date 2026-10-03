@@ -156,6 +156,25 @@ To try the search on its own:
 
     python3 worker/jobsearch/jobsearch.py "AI Engineer" --country ph --remote
 
+### 6e. People to email (optional Hunter key)
+
+For each job it saves, the finder looks for up to 2 people to email and writes a short draft. In the
+app, the **Send email** button opens it in Gmail with everything filled in. You read it, change
+anything you like, and press Send yourself. Nothing is ever sent for you.
+
+Addresses are real ones only: either the job post prints it, or Hunter.io returns it. An address is
+never guessed, and LinkedIn is never used. To add Hunter:
+
+1. Sign up for Hunter's free plan at https://hunter.io and copy your API key from your account.
+2. Open `worker/.env` and paste it after `HUNTER_API_KEY=`. Save.
+3. On Hunter's account page, check how many searches a month your plan gives. If it isn't 25, put the
+   number after `HUNTER_MONTHLY_SEARCHES=`.
+
+The free plan is small, so the finder spreads its searches over the month, and many jobs will honestly
+say **No email found**. **Find people** on a job asks your Mac to spend a search on that one job, and
+**Use this person** rewrites the email for the other contact. Both run on your Mac, like **Find jobs
+now**: it has to be awake, with `npm run schedule` installed.
+
 ### 7. Try it
 
     cd ~/Desktop/personal/job-automation-app/worker

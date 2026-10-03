@@ -14,6 +14,7 @@ import { batchMessage, needsManualMessage, sendTelegram } from "./notify";
 import { claudeCodeScorer, rank, type Ranked } from "./scoring";
 import { LOOKUPS_PER_DAY, lookUpPosting, searchJSearch, todaysSearches } from "./jsearch";
 import { searchOnlineJobs } from "./onlinejobs";
+import { outreachForSaved } from "./outreach";
 import { MAX_SEARCHES, searchOwn } from "./ownsearch";
 import { fetchBoard, type Posting } from "./sources";
 import { toRemember, verifyPicks, type Checked } from "./verify";
@@ -25,12 +26,14 @@ const send = dryRun ? async (text: string) => (console.log(`[dry run; not sent]\
 // Counted as searches happen, so even a run that fails later records them (option A's daily check).
 let jsearchSearches = 0;
 let jsearchLookups = 0;
+// Hunter searches this run used (stage 7), recorded even when the run fails later.
+let hunterLookups = 0;
 // Set by watch.ts when the owner pressed "Find jobs now", so the app can follow this run.
 const requestId = process.env.FINDER_REQUEST_ID?.trim();
 let runId: string | undefined;
 
 /** Records what the run is doing now, for the live progress in the app. A failure here never stops the run. */
-async function stage(name: "career_pages" | "job_sites" | "onlinejobs" | "emails" | "scoring" | "checking" | "saving" | null) {
+async function stage(name: "career_pages" | "job_sites" | "onlinejobs" | "emails" | "scoring" | "checking" | "saving" | "outreach" | null) {
   if (!runId) return;
   const { error } = await db.from("worker_runs").update({ stage: name }).eq("id", runId);
   if (error) console.log(`Couldn't record the stage (${name}): ${error.message}`);
@@ -262,11 +265,15 @@ async function main() {
     // A note goes first, so it is the first thing the owner reads, in the app and on Telegram.
     await stage("saving");
     const top = picks.map((job) => (job.note ? { ...job, reasons: [job.note, ...job.reasons] } : job));
+    let saved: { id: string; company: string; role: string; description: string | null }[] = [];
     if (!dryRun && top.length) {
-      const { error: insertError } = await db
+      // .select() returns only the rows actually inserted (duplicates are ignored): the day's new jobs.
+      const { data, error: insertError } = await db
         .from("jobs")
-        .upsert(top.map(toJob), { onConflict: "url", ignoreDuplicates: true });
+        .upsert(top.map(toJob), { onConflict: "url", ignoreDuplicates: true })
+        .select("id, company, role, description");
       if (insertError) throw insertError;
+      saved = data;
     }
     if (!dryRun) await rememberRejected(jobs);
     if (!dryRun && readEmails.length) {
@@ -277,7 +284,14 @@ async function main() {
       if (emailsError) throw emailsError;
     }
 
-    const notified = await send(batchMessage(top, errors, fresh));
+    // Stage 7: people to email and one draft for each job just saved. Dry runs skip it: Hunter's free
+    // searches are few, and nothing is saved.
+    await stage("outreach");
+    const withText = saved.flatMap((job) => (job.description ? [{ ...job, description: job.description }] : []));
+    const outreach = dryRun ? null : await outreachForSaved(db, parseMasterCv(criteria.master_cv), withText, errors);
+    hunterLookups = outreach?.lookups ?? 0;
+
+    const notified = await send(batchMessage(top, errors, fresh, outreach?.drafted ?? null));
     const until = new Date().toISOString();
     if (!dryRun) await notifyNeedsManual(until);
 
@@ -297,6 +311,7 @@ async function main() {
         notified,
         jsearch_searches: jsearchSearches,
         jsearch_lookups: jsearchLookups,
+        hunter_lookups: hunterLookups,
       })
       .eq("id", run.id);
     if (logError) throw logError;
@@ -305,7 +320,7 @@ async function main() {
     errors.push(message(failure));
     await db
       .from("worker_runs")
-      .update({ finished_at: new Date().toISOString(), ok: false, stage: null, errors, jsearch_searches: jsearchSearches, jsearch_lookups: jsearchLookups })
+      .update({ finished_at: new Date().toISOString(), ok: false, stage: null, errors, jsearch_searches: jsearchSearches, jsearch_lookups: jsearchLookups, hunter_lookups: hunterLookups })
       .eq("id", run.id);
     await send(`<b>The daily job finder failed.</b>\n${message(failure).replace(/[<>&]/g, "")}`).catch(() => {});
     throw failure;

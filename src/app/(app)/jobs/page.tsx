@@ -2,6 +2,8 @@ import Link from "next/link";
 import { formatDate, formatFoundAt, formatSalary, JOB_STATUSES, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
 import { requireOwner } from "@/lib/supabase/server";
 import { CompanyMark } from "./company-mark";
+import { requestStatesNow } from "./outreach-state";
+import { SendEmailButton } from "./send-email-button";
 import { StatusBadge } from "./status-badge";
 
 const SORTS = {
@@ -24,9 +26,12 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
   const supabase = await requireOwner();
   let query = supabase
     .from("jobs")
-    .select("id, status, company, role, site, created_at, date_applied, salary_min, salary_max, salary_currency, salary_raw")
+    // One string literal: supabase-js infers the row type from it, and a concatenated string loses that.
+    .select("id, status, company, role, site, created_at, date_applied, salary_min, salary_max, salary_currency, salary_raw, outreach_emails(id, kind, to_email, subject, body, status), outreach_requests(id, kind, requested_at, picked_up_at, finished_at, error)")
     .order(sort.column, { ascending: sort.ascending, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("requested_at", { referencedTable: "outreach_requests", ascending: false })
+    .limit(1, { referencedTable: "outreach_requests" });
   if (status) query = query.eq("status", status);
   if (site) query = query.eq("site", site);
 
@@ -35,6 +40,7 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
     supabase.from("jobs").select("site"),
   ]);
   if (error) throw error;
+  const requests = requestStatesNow(jobs, (job) => job.outreach_requests[0] ?? null);
   const sites = [...new Set(siteRows?.map((row) => row.site))].sort();
 
   return (
@@ -88,10 +94,11 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
               <th>Found</th>
               <th>Applied</th>
               <th>Salary</th>
+              <th>Email</th>
             </tr>
           </thead>
           <tbody>
-            {jobs.map((job) => (
+            {jobs.map((job, index) => (
               <tr key={job.id} className="transition-colors hover:bg-surface-muted/60">
                 <td><StatusBadge status={job.status} /></td>
                 <td className="font-medium">
@@ -108,11 +115,18 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
                   {/* Truncation needs a block inside the cell; "as written" salaries can run long. */}
                   <span className="block max-w-36 truncate" title={formatSalary(job)}>{formatSalary(job)}</span>
                 </td>
+                <td>
+                  <SendEmailButton
+                    jobId={job.id}
+                    email={job.outreach_emails.find((email) => email.kind === "first") ?? null}
+                    request={requests[index]}
+                  />
+                </td>
               </tr>
             ))}
             {jobs.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-muted">No jobs match these filters.</td>
+                <td colSpan={8} className="py-8 text-center text-muted">No jobs match these filters.</td>
               </tr>
             )}
           </tbody>

@@ -21,7 +21,14 @@
   },
   "plan": {
     "allowedChecks": [
-      "npm run db:test"
+      "npm run db:test",
+      "npx vitest run [\\w./-]+"
+    ],
+    "unsatisfiable": [
+      {
+        "match": "npm run verify -- .+",
+        "why": "since 2026-10-02 the test script also runs Python unittest, which receives the file argument and fails; use npx vitest run <file>"
+      }
     ]
   }
 }

@@ -25,6 +25,13 @@ afterEach(() => {
 });
 
 describe("batchMessage", () => {
+  it("says how many emails are ready to send, and nothing on a dry run", () => {
+    expect(batchMessage([job, job, job], [], 12, 2)).toContain("\n3 jobs found, 2 emails ready to send.\n");
+    expect(batchMessage([job], [], 12, 1)).toContain("1 job found, 1 email ready to send.");
+    expect(batchMessage([job, job, job], [], 12)).not.toContain("ready to send");
+    expect(batchMessage([], [], 12, 0)).not.toContain("ready to send");
+  });
+
   it("lists each pick with site, salary, score, link and one fit reason, escaped for Telegram HTML", () => {
     const text = batchMessage([{ ...job, role: "R&D <Engineer>" }, job, job], [], 12);
     expect(text).toContain("<b>Today's top 3 jobs</b>");

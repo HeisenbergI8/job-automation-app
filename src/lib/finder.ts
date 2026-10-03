@@ -20,6 +20,7 @@ export const STAGES = [
   { id: "scoring", label: "Scoring new jobs against your CV" },
   { id: "checking", label: "Checking the best against their full postings" },
   { id: "saving", label: "Saving the best matches" },
+  { id: "outreach", label: "Finding people to email and drafting emails" },
 ] as const;
 
 // The Mac checks every 30 seconds; past this, it is probably asleep or the check isn't installed.

@@ -19,7 +19,8 @@ const FIT_LENGTH = 140;
  * The daily message, kept short (owner, 2026-09-30): per job only the site, title, salary, score and
  * one line on why it fits. Fewer than TOP only when fewer new jobs than that were reviewed.
  */
-export function batchMessage(saved: Ranked[], problems: string[], checked: number) {
+/** `emailsReady` is null on dry runs, which draft nothing, so the line is left out. */
+export function batchMessage(saved: Ranked[], problems: string[], checked: number, emailsReady: number | null = null) {
   // Every job sent passed the full-posting check (verify.ts), so fewer than TOP means fewer passed.
   const heading =
     saved.length >= TOP
@@ -28,6 +29,10 @@ export function batchMessage(saved: Ranked[], problems: string[], checked: numbe
         ? `<b>Only ${saved.length} ${saved.length === 1 ? "job" : "jobs"} passed today's check</b>`
         : `<b>No jobs passed today's check (${checked} new checked).</b>`;
   const lines = [heading];
+  // Stage 7 (owner, 2026-10-02): e.g. "3 jobs found, 2 emails ready to send."
+  if (emailsReady != null && saved.length) {
+    lines.push(`${saved.length} ${saved.length === 1 ? "job" : "jobs"} found, ${emailsReady} ${emailsReady === 1 ? "email" : "emails"} ready to send.`);
+  }
   saved.forEach((job, index) => {
     const salary = formatSalary(job);
     lines.push(

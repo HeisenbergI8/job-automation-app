@@ -1,0 +1,15 @@
+{
+  "_source": "Built from Hunter's v2 API documentation on 2026-10-02, not a recorded answer. Replace with a real one (plan Step 8.2).",
+  "data": {
+    "domain": "mail.test",
+    "organization": "Mail Co",
+    "pattern": "{first}.{last}",
+    "emails": [
+      { "value": "carla.reyes@mail.test", "type": "personal", "confidence": 94, "first_name": "Carla", "last_name": "Reyes", "position": "Talent Acquisition Partner", "seniority": null, "department": "hr" },
+      { "value": "ben.ong@mail.test", "type": "personal", "confidence": 88, "first_name": "Ben", "last_name": "Ong", "position": "Engineering Manager, Platform", "seniority": "senior", "department": "engineering" },
+      { "value": "dan.lim@mail.test", "type": "personal", "confidence": 91, "first_name": "Dan", "last_name": "Lim", "position": "Account Executive", "seniority": "junior", "department": "sales" },
+      { "value": "careers@mail.test", "type": "generic", "confidence": 97, "first_name": null, "last_name": null, "position": null, "seniority": null, "department": null }
+    ]
+  },
+  "meta": { "results": 4, "limit": 10, "offset": 0 }
+}

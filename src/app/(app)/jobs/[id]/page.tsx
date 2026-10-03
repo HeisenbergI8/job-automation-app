@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
-import { formatDate, formatFoundAt, formatSalary, STATUS_LABELS, type JobStatus } from "@/lib/jobs";
+import { ArrowLeft, ExternalLink, Mail } from "lucide-react";
+import { formatDate, formatFoundAt, formatSalary, type JobStatus } from "@/lib/jobs";
 import { cvText, parseMasterCv } from "@/lib/master-cv";
+import { timelineEntries } from "@/lib/outreach";
 import { requireOwner } from "@/lib/supabase/server";
 import { keywordScore } from "@/lib/tailoring/ats";
 import { CompanyMark } from "../company-mark";
+import { requestStatesNow } from "../outreach-state";
 import { StatusBadge } from "../status-badge";
 import { DeleteJob } from "./delete-job";
+import { OutreachPanel } from "./outreach-panel";
 import { StatusControl } from "./status-control";
 import { IntroAdaptation, NewIntroForm, TailorButton } from "./tailoring-panels";
 import { UploadForm } from "./upload-form";
@@ -37,13 +40,26 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
   const { data: job } = await supabase.from("jobs").select("*").eq("id", id).maybeSingle();
   if (!job) notFound();
 
-  const [{ data: events }, { data: transitions }, { data: documents }, { data: intros }, { data: settings }] = await Promise.all([
+  const [
+    { data: events }, { data: transitions }, { data: documents }, { data: intros }, { data: settings },
+    { data: contacts }, { data: emails }, { data: latestRequest },
+  ] = await Promise.all([
     supabase.from("job_status_events").select("*").eq("job_id", id).order("changed_at"),
     supabase.from("job_status_transitions").select("to_status").eq("from_status", job.status),
     supabase.from("application_documents").select("*").eq("job_id", id).order("created_at", { ascending: false }),
     supabase.from("intro_adaptations").select("*").eq("job_id", id).order("created_at", { ascending: false }),
     supabase.from("settings").select("master_cv").single(),
+    supabase.from("job_contacts").select("id, name, title, email, source, confidence, rank").eq("job_id", id).order("rank"),
+    supabase.from("outreach_emails").select("id, kind, contact_id, to_email, to_name, subject, body, status, opened_at, sent_at").eq("job_id", id),
+    supabase.from("outreach_requests").select("id, kind, requested_at, picked_up_at, finished_at, error")
+      .eq("job_id", id).order("requested_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  const first = emails?.find((email) => email.kind === "first") ?? null;
+  const followUp = emails?.find((email) => email.kind === "follow_up") ?? null;
+  const timeline = timelineEntries(events ?? [], emails ?? []);
+  const [request] = requestStatesNow([latestRequest ?? null], (row) => row);
+  // The ring marks the current status, which is the latest status entry, not a later email.
+  const currentKey = timeline.findLast((entry) => entry.kind === "status")?.key;
 
   const master = parseMasterCv(settings?.master_cv);
   const masterMatch = master && job.ats_keywords ? keywordScore(job.ats_keywords, cvText(master)) : null;
@@ -200,20 +216,33 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
           </section>
 
           <section className="card">
+            <h2 className="section-title">Email someone about it</h2>
+            <OutreachPanel
+              jobId={job.id}
+              contacts={contacts ?? []}
+              first={first}
+              followUp={followUp}
+              request={request}
+            />
+          </section>
+
+          <section className="card">
             <h2 className="section-title">Timeline</h2>
             <ol className="text-sm">
-              {events?.map((event, index) => {
-                const current = index === events.length - 1;
+              {timeline.map((entry, index) => {
+                const current = entry.key === currentKey;
                 return (
-                  <li key={event.id} className="relative flex gap-3 pb-5 last:pb-0">
-                    {!current && <span className="absolute top-6 bottom-0 left-[11px] w-px bg-border" aria-hidden="true" />}
+                  <li key={entry.key} className="relative flex gap-3 pb-5 last:pb-0">
+                    {index < timeline.length - 1 && <span className="absolute top-6 bottom-0 left-[11px] w-px bg-border" aria-hidden="true" />}
                     <span
                       aria-hidden="true"
                       className={`relative flex size-6 shrink-0 items-center justify-center rounded-full ${
                         current ? "border-2 border-accent bg-surface" : "bg-accent-soft text-accent"
                       }`}
                     >
-                      {current ? (
+                      {entry.kind === "email" ? (
+                        <Mail className="size-3" />
+                      ) : current ? (
                         <span className="size-2.5 rounded-full bg-accent" />
                       ) : (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -222,11 +251,11 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
                       )}
                     </span>
                     <div className="pt-0.5">
-                      <div className="font-medium">{STATUS_LABELS[event.to_status]}</div>
+                      <div className="font-medium">{entry.label}</div>
                       <div className="text-xs text-muted">
-                        {new Date(event.changed_at).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}
+                        {new Date(entry.at).toLocaleString("en", { dateStyle: "medium", timeStyle: "short" })}
                       </div>
-                      {event.note && <div className="mt-0.5 text-muted">{event.note}</div>}
+                      {entry.note && <div className="mt-0.5 text-muted">{entry.note}</div>}
                     </div>
                   </li>
                 );
