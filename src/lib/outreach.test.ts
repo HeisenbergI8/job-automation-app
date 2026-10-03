@@ -113,6 +113,11 @@ describe("followUpDraft", () => {
     expect(draft.body.length).toBeLessThan(MAX_BODY_CHARS);
   });
 
+  it("greets a hiring team as \"Hi there,\", like the first email", () => {
+    const draft = followUpDraft({ to_name: "Kappa hiring team", subject: "Frontend Engineer role", company: "Kappa", role: "Frontend Engineer" }, "Sample Owner");
+    expect(draft.body.startsWith("Hi there,\n")).toBe(true);
+  });
+
   it("keeps the owner's no-em-dash rule when the job title has one", () => {
     const draft = followUpDraft({ to_name: null, subject: "Senior Engineer — Platform", company: "Acme — Labs", role: "Senior Engineer — Platform" }, "Sample Owner");
     expect(`${draft.subject}${draft.body}`).not.toContain("—");

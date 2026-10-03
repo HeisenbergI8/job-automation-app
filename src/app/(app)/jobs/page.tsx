@@ -90,11 +90,11 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
               <th>Status</th>
               <th>Company</th>
               <th>Role</th>
+              <th>Email</th>
               <th>Site</th>
               <th>Found</th>
               <th>Applied</th>
               <th>Salary</th>
-              <th>Email</th>
             </tr>
           </thead>
           <tbody>
@@ -108,19 +108,19 @@ export default async function JobsPage({ searchParams }: PageProps<"/jobs">) {
                   </Link>
                 </td>
                 <td className="min-w-44">{job.role}</td>
-                <td className="text-muted">{job.site}</td>
-                <td className="whitespace-nowrap">{formatFoundAt(job.created_at)}</td>
-                <td className="whitespace-nowrap">{formatDate(job.date_applied)}</td>
-                <td>
-                  {/* Truncation needs a block inside the cell; "as written" salaries can run long. */}
-                  <span className="block max-w-36 truncate" title={formatSalary(job)}>{formatSalary(job)}</span>
-                </td>
                 <td>
                   <SendEmailButton
                     jobId={job.id}
                     email={job.outreach_emails.find((email) => email.kind === "first") ?? null}
                     request={requests[index]}
                   />
+                </td>
+                <td className="text-muted">{job.site}</td>
+                <td className="whitespace-nowrap">{formatFoundAt(job.created_at)}</td>
+                <td className="whitespace-nowrap">{formatDate(job.date_applied)}</td>
+                <td>
+                  {/* Truncation needs a block inside the cell; "as written" salaries can run long. */}
+                  <span className="block max-w-36 truncate" title={formatSalary(job)}>{formatSalary(job)}</span>
                 </td>
               </tr>
             ))}

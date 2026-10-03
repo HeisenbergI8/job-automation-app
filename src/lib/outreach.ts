@@ -83,7 +83,10 @@ export function followUpDraft(
   first: { to_name: string | null; subject: string; company: string; role: string },
   ownerName: string,
 ): Draft {
-  const hello = first.to_name?.trim() ? `Hi ${first.to_name.trim().split(/\s+/)[0]},` : "Hi,";
+  // A person gets their first name; a hiring team (worker/src/contacts.ts names it "<company> hiring team")
+  // gets "Hi there,", as the first email does.
+  const person = first.to_name?.trim() && !/hiring team$/i.test(first.to_name.trim()) ? first.to_name.trim() : null;
+  const hello = person ? `Hi ${person.split(/\s+/)[0]},` : "Hi there,";
   // The role and company come from the job as saved, and job titles often hold em dashes.
   return {
     subject: withoutDashes(/^re:/i.test(first.subject) ? first.subject : `Re: ${first.subject}`),

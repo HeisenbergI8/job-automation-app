@@ -51,8 +51,15 @@
 
 ## Phase 8: Checks and docs — 2026-10-03
 
-**Steps completed:** 8.4. Step 8.1 handed to the tester agent (results below when in). 8.2 and 8.3 wait for the owner.
+**Steps completed:** 8.1 (by the tester agent), 8.4. 8.2 and 8.3 wait for the owner.
 **Files changed:** `docs/ROADMAP.md` (the rest of the owner's decisions, "Last updated"), `CONVENTIONS.md` (State, Stack, two product rules, three traps)
 **Deviations from plan:** none. Roadmap boxes 7.1–7.6 stay unticked until the owner's hosted run, as the plan says.
 **Gate:** `grep -q "outreach_emails" CONVENTIONS.md` PASS.
 **Waiting for the owner (not gaps):** 8.2, recording real Hunter answers with the owner's key and `npx supabase db push` before the first hosted run; 8.3, trying the Gmail link formats and a long draft in the owner's browser. Follow Ups Question 1 (a minimum Hunter score) uses the plan's default: every Hunter answer kept, with its score shown.
+
+## Step 8.1 results and review fixes — 2026-10-03
+
+**Tester (Step 8.1), all 7 checks PASS on the local stack:** db:test 46/46; a dry run does no outreach (`hunter_lookups` 0); a real local run with real Claude Code scoring and drafting (job sites blocked, so one Greenhouse board was stubbed) saved 2 jobs and printed "2 jobs found, 1 email ready to send.": the job whose post printed an address got a `job_post` contact and a draft that passes `findEmailInventions` with no em dash, and the other got no contact and no draft. `.select()` after the ignore-duplicates upsert returned only new rows, and a second run drafted nothing. In the browser: the Gmail link decodes to the right to, subject and body; clicking marks it opened ("Open again"); "I sent it" marks it sent, the timeline shows "Email sent" between the right status entries, and the job's status is unchanged; "Find people" goes through the watcher to a real draft, or to "No one to email was found for this job."; no overflow at 390px; the cron returned `followUps: 1` and the dashboard listed it; deleting a job removes its contacts, emails and requests; the owner can't update `body`, `to_email` or `subject` (42501). No console errors or hydration warnings. 1 of 1 drafts passed the check, too few to measure `namesIn` false positives.
+**Not verified:** real Hunter answers, Gmail's rendering of the link, the "Use this person" click, and the local password login (the local GoTrue has email login off, unrelated to this stage; the tester signed an owner token instead).
+**Fixes after review:** the auditor found the follow-up template could carry an em dash from the job title (`withoutDashes` now applied, with a test). The tester found the Email column at the far right of the Jobs table was hidden until scrolled (moved next to Role), and the follow-up greeted a hiring team as "Hi Kappa," (now "Hi there,", like the first email, with a test). The watcher's header comment now says outreach requests run for real.
+**Gate:** `npm run verify` PASS, 160/160 vitest and 14/14 Python.
