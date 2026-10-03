@@ -8,8 +8,9 @@ enough to plan, build and verify one at a time. Tick a box only when its **Done 
 Small chunks can be built directly. For bigger ones (marked **[plan]**), have the `architect` agent
 write a plan in `.claude/plans/`, then run it with `/build <label> --plan <path>`.
 
-Last updated 2026-09-29. Stages 0–4 are built and verified; stage 5 is being built
-(plan: `.claude/plans/feature-daily-finder-plan/`).
+Last updated 2026-10-03. Stages 0–4 are built and verified; stage 5 is being built
+(plan: `.claude/plans/feature-daily-finder-plan/`). Stage 7 is built and verified locally, waiting on
+the owner's first hosted run (plan: `.claude/plans/feature-outreach-email-plan/`).
 
 ---
 
@@ -155,6 +156,13 @@ owner presses Send. **The app never sends an email itself.**
 first; real emails only: from the job post or Hunter.io, never guessed, otherwise "No email found";
 never scraping LinkedIn or any site that forbids it. Work started by a click ("Find people", picking another contact) runs on the
 Mac through Claude Code headless, like "Find jobs now", not on the paid API.
+
+*Decided 2026-10-02 (owner), the rest:* sent emails show on the job page's timeline only; Hunter's
+free searches are spread over the month, with an email finder for a person the post names; generic
+addresses (careers@) only when the post prints them; Hunter emails are shown with Hunter's score and
+not verified; a reply is the job's status moving to screening, interview, offer or rejected; the
+5-day follow-up is a fixed template the ghosting cron writes, opened as a new "Re:" email; `mailto:`
+on iPhone and iPad; "I sent it" never changes the job's status.
 
 - [ ] **7.1 Schema.** `job_contacts` and `outreach_emails`, with row-level security, and the Hunter
   lookups a run used in `worker_runs`.

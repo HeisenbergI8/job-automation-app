@@ -13,11 +13,15 @@ records every application, with its status timeline, and shows analytics. The fu
 - **Worker** (`worker/`): plain Node + Playwright. Runs once a day on the owner's Mac, not on Vercel.
 - **Supabase** (`supabase/`): Postgres, Storage (CVs, cover letters, intro videos) and Auth.
 - **Claude**: CV and cover-letter tailoring and self-intro adaptation through the API (web app).
-  Fit scoring through Claude Code headless (`claude -p`) with the owner's subscription (worker).
+  Fit scoring and outreach drafts through Claude Code headless (`claude -p`) with the owner's
+  subscription (worker).
+- **Hunter.io** free API (worker, optional): people to email about a saved job (stage 7).
 
 **State as of 2026-09-29:** roadmap stages 0–4 are built (foundation, job record and dashboard,
 analytics, settings, tailoring). Stage 5, the daily finder in `worker/`, is built and verified against
 the local stack; its roadmap boxes are ticked after the owner's first run against the hosted project.
+Stage 7, outreach emails the owner sends from Gmail, was built on 2026-10-03 at the owner's direction
+(before stage 6) and verified against the local stack (plan: `.claude/plans/feature-outreach-email-plan/`).
 Build in the order in `docs/ROADMAP.md`.
 
 ---
@@ -75,6 +79,12 @@ Path alias: `@/*` → `src/*`.
   `OWNER_EMAIL` and `OWNER_PASSWORD` in `.env.local`.
 - **React 19 resets a form after its action runs.** Forms that must keep their values after an error
   submit through `startTransition` in `onSubmit` (see `login-form.tsx`).
+- **`outreach_emails` status moves only draft → opened → sent** (a trigger enforces it and stamps the
+  times). The owner may update only `status`; a sent email is frozen.
+- **"Email sent" is not a job status.** The job page merges sent emails into its timeline
+  (`timelineEntries` in `src/lib/outreach.ts`); `job_status_events` stays status changes only.
+- **`npm run verify -- <file>` no longer runs one test:** the file argument reaches the Python tests.
+  Use `npx vitest run <file>`.
 - **The worker has its own env files.** `worker/.env` points at the hosted project (the daily run),
   `worker/.env.local` at the local stack (`npm run dev`). It never reads the root `.env.local`.
 - **Never put `ANTHROPIC_API_KEY` in the worker's env.** Claude Code would bill the API instead of the
@@ -99,6 +109,10 @@ Path alias: `@/*` → `src/*`.
 
 These come from the spec and are easy to erode during implementation:
 
+- **The app never sends an email.** Outreach drafts open in Gmail's compose page (or `mailto:`); the
+  owner presses Send. Drafts pass the no-invention check (`findEmailInventions` in `src/lib/outreach.ts`).
+- **Real email addresses only.** A contact's address is printed in the job post or returned by Hunter;
+  it's never built from a name or a pattern. With none, the app says "No email found".
 - **Never bypass a CAPTCHA.** If one appears, stop and mark the job `needs_manual` with the link.
 - **Never auto-apply on LinkedIn, Indeed or JobStreet.** They may be searched but not applied to,
   to protect the owner's accounts. Auto-apply is only for company career pages (Greenhouse, Lever,
